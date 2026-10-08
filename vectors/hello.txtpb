@@ -1,0 +1,4 @@
+# App -> rover: the first message on every connection.
+rover_id: ""
+sent_at_ms: 1791454416600
+hello { protocol_version: PROTOCOL_VERSION_1  app_version: "0.1.0 (1)"  client_id: "mk32-839dd8cc" }

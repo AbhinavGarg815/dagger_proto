@@ -1,4 +1,4 @@
-// Dagger app <-> rover contract. Schema v0 (draft, Phase 0).
+// Dagger app <-> rover contract. Schema v1 (Phase 1).
 //
 // One file is the whole interface between the operator app (Kotlin) and the
 // rover gateway (Python). Code for both sides is generated from it.
@@ -37,10 +37,12 @@ option java_multiple_files = true;
 
 // Bumped whenever the meaning of the contract changes in a way an older peer
 // would misread. Adding a field does NOT need a bump.
-// v0: this draft.
+// v0: the Phase 0 draft, never deployed.
+// v1: first version the app and the gateway are built against (Phase 1).
 enum ProtocolVersion {
   PROTOCOL_VERSION_UNSPECIFIED = 0;
   PROTOCOL_VERSION_0 = 1;
+  PROTOCOL_VERSION_1 = 2;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +67,16 @@ message Envelope {
     RoverState state = 13;
     Command command = 14;
     CommandResult command_result = 15;
-    // 16 is intended for Event (alerts, waypoint reached) in v1.
+    // Rover -> app, reliable and in order: things that HAPPENED (an alert
+    // raised or cleared, a state change and why). The app uses them for
+    // sounds, spoken messages and the history; what is true NOW is always in
+    // RoverState.
+    Event event = 16;
+    // Rover -> app: limits and timings the app must use. Sent right after
+    // HelloReply and again whenever they change. Never hard-coded in the app.
+    RoverSettings settings = 17;
+    // 18 is intended for the video channel (Phase 4). Video travels on its own
+    // WebSocket so a large frame can never delay a STOP.
   }
 }
 
@@ -94,12 +105,17 @@ message HelloReply {
   string rover_name = 4;
   string rover_software_version = 5;
   // What this rover can do. The app shows only these.
-  repeated Capability capabilities = 6;
+  // [packed = true] is proto3's default anyway; written out because Wire
+  // only packs repeated enums when told to, and both sides must produce
+  // identical bytes (proto/vectors).
+  repeated Capability capabilities = 6 [packed = true];
 }
 
 enum Capability {
   CAPABILITY_UNSPECIFIED = 0;
   CAPABILITY_STOP = 1;
+  CAPABILITY_READINESS = 2;
+  CAPABILITY_ALERTS = 3;
   // Later: CAPABILITY_RUN_ROUTE, CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -156,6 +172,19 @@ message RoverState {
 
   // The rover's own view of the app link, from its heartbeats.
   Link link = 7;
+
+  // The readiness checks, every time, in the rover's order. The app shows
+  // them in the status strip and on the Ready check screen; the rover decides
+  // their status and which jobs each one blocks.
+  repeated ReadinessCheck readiness = 8;
+
+  // Motors armed. Arming stays on the physical RC switch; the app only tells
+  // the operator when arming is needed (an ACTION alert) and never arms.
+  bool armed = 9;
+
+  // Everything currently wrong or waiting, highest severity first. Complete
+  // every time: an alert that is not here is not active.
+  repeated Alert active_alerts = 10;
 }
 
 // The one state machine the gateway owns. The app shows this and never
@@ -202,6 +231,151 @@ message Battery {
   // State of charge, 0 to 100.
   float percent = 1;
   float voltage_v = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Readiness
+// ---------------------------------------------------------------------------
+
+message ReadinessCheck {
+  CheckId id = 1;
+  CheckStatus status = 2;
+  // Jobs this check stops from starting while it is not PASS. Empty means it
+  // is advisory only.
+  repeated Job blocks = 3 [packed = true];  // see HelloReply.capabilities
+  // Numbers the app may show with its own wording, e.g. {"percent": 18} for
+  // battery, {"valid_percent": 42} for heading. Keys are listed per CheckId.
+  map<string, double> values = 4;
+}
+
+// What the operator is told is ready or not. The gateway maps its detailed
+// checks (tools/preflight.py and friends) onto these.
+enum CheckId {
+  CHECK_ID_UNSPECIFIED = 0;
+  CHECK_FLIGHT_CONTROLLER = 1;  // FCU connected, data flowing at the needed rates
+  CHECK_REMOTE_CONTROL = 2;     // RC link to the handset sticks is alive
+  CHECK_POSITION = 3;           // GNSS position good and the estimator steady
+  CHECK_HEADING = 4;            // GNSS heading valid
+  CHECK_OBSTACLE_SENSOR = 5;    // LiDAR running at rate
+  CHECK_LOCALISATION = 6;       // the rover knows where it is on the map
+  CHECK_NAVIGATION = 7;         // route driving (Nav2) up
+  CHECK_BATTERY = 8;            // values: percent
+  CHECK_CAMERA = 9;             // needed for following only
+}
+
+enum CheckStatus {
+  CHECK_STATUS_UNSPECIFIED = 0;
+  CHECK_STATUS_PENDING = 1;     // not yet known (starting up)
+  CHECK_STATUS_PASS = 2;
+  CHECK_STATUS_WARN = 3;        // usable, but the operator should know
+  CHECK_STATUS_FAIL = 4;
+}
+
+// The operator's jobs, so the rover can say which ones are possible right now.
+enum Job {
+  JOB_UNSPECIFIED = 0;
+  JOB_RUN_ROUTE = 1;
+  JOB_GO_TO_PLACE = 2;
+  JOB_FOLLOW = 3;
+  JOB_COME_HOME = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Alerts and events
+// ---------------------------------------------------------------------------
+
+// Rule 6: a code plus values. The app owns every word the operator reads, so
+// wording and translation never need a rover change.
+message Alert {
+  // Unique for the life of the rover process; the same id in Event
+  // alert_cleared ends it.
+  uint32 id = 1;
+  AlertCode code = 2;
+  Severity severity = 3;
+  // Numbers for the wording, e.g. {"percent": 18}, {"seconds": 12}.
+  map<string, double> values = 4;
+  // Rover's wall clock (UTC ms) when it was raised, for "for 2 minutes".
+  uint64 raised_at_ms = 5;
+}
+
+// ISA-101: neutral is normal; colour means something.
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  SEVERITY_INFO = 1;            // no colour
+  SEVERITY_WARNING = 2;         // amber
+  SEVERITY_PROBLEM = 3;         // red
+  SEVERITY_ACTION = 4;          // blue: the rover is waiting for the operator
+}
+
+// One per thing the operator can be told. Wording lives in the app
+// (docs/handoff.md section 10 has the first translations).
+enum AlertCode {
+  ALERT_CODE_UNSPECIFIED = 0;
+  ALERT_POSITION_NOT_ACCURATE = 1;   // EKF unhealthy, GNSS poor
+  ALERT_HEADING_UNKNOWN = 2;         // GNSS heading invalid
+  ALERT_PATH_BLOCKED = 3;            // collision monitor holding; values: seconds
+  ALERT_NO_PATH = 4;                 // Nav2 gave up
+  ALERT_FOLLOW_TARGET_LOST = 5;      // values: seconds
+  ALERT_LINK_WEAK = 6;
+  ALERT_BATTERY_LOW = 7;             // values: percent
+  ALERT_BATTERY_CRITICAL = 8;        // failsafe level; values: percent
+  ALERT_ARM_WITH_SWITCH = 9;         // ACTION: arm on the RC switch to continue
+  ALERT_RC_LINK_LOST = 10;           // sticks not reaching the rover
+  ALERT_SERVICE_RESTARTING = 11;     // a rover service died and is coming back
+  ALERT_STOPPED_BY_OPERATOR = 12;    // after STOP, until the next job
+  ALERT_PAUSED_APP_SILENT = 13;      // route paused: app was silent; values: seconds
+}
+
+message Event {
+  // Increases by one per event, per connection.
+  uint64 seq = 1;
+  oneof kind {
+    Alert alert_raised = 10;
+    // The id of an alert that is no longer active.
+    uint32 alert_cleared = 11;
+    StateChange state_changed = 12;
+  }
+}
+
+message StateChange {
+  OperatingState from_state = 1;
+  OperatingState to_state = 2;
+  StateReason reason = 3;
+}
+
+// Why the operating state changed. The app plays a sound and speaks the reason
+// for anything that stopped or paused the rover.
+enum StateReason {
+  STATE_REASON_UNSPECIFIED = 0;
+  STATE_REASON_OPERATOR = 1;         // the operator's command (STOP, start, pause)
+  STATE_REASON_APP_SILENT = 2;       // link-loss policy
+  STATE_REASON_ROUTE_FINISHED = 3;
+  STATE_REASON_PATH_BLOCKED = 4;
+  STATE_REASON_FAULT = 5;
+  STATE_REASON_RC_OVERRIDE = 6;      // the sticks took over
+  STATE_REASON_READINESS = 7;        // a readiness check changed
+}
+
+// ---------------------------------------------------------------------------
+// Settings — rover -> app
+// ---------------------------------------------------------------------------
+
+// The rover's limits and timings. The app uses these and never its own.
+message RoverSettings {
+  // How often each side sends a heartbeat.
+  uint32 heartbeat_period_ms = 1;
+  // How often RoverState is sent.
+  uint32 state_period_ms = 2;
+  // Link-loss policy (decided 2026-10-08): follow stops after this much app
+  // silence...
+  uint32 follow_stop_after_silence_ms = 3;
+  // ...and a running route pauses after this much. Supervisor-adjustable
+  // within the bounds below; the rover enforces them.
+  uint32 route_pause_after_silence_ms = 4;
+  uint32 route_pause_after_silence_min_ms = 5;
+  uint32 route_pause_after_silence_max_ms = 6;
+  // Top speed the rover will drive any job at, m/s.
+  float max_speed_mps = 7;
 }
 
 message Link {

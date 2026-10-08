@@ -1,0 +1,3 @@
+rover_id: "dagger-1"
+sent_at_ms: 1791454418020
+event { seq: 6  state_changed { from_state: OPERATING_STATE_RUNNING_ROUTE  to_state: OPERATING_STATE_STOPPED  reason: STATE_REASON_OPERATOR } }

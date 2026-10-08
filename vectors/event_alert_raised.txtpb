@@ -1,0 +1,3 @@
+rover_id: "dagger-1"
+sent_at_ms: 1791454419000
+event { seq: 5  alert_raised { id: 8  code: ALERT_BATTERY_LOW  severity: SEVERITY_WARNING  values { key: "percent"  value: 18 }  raised_at_ms: 1791454419000 } }

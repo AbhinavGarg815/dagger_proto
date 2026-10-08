@@ -1,0 +1,5 @@
+# A measured round trip of 0 ms (fast local link) must stay distinguishable
+# from "not measured yet" (state_no_fix). This is why round_trip_ms is optional.
+rover_id: "dagger-1"
+sent_at_ms: 1791454417400
+state { seq: 9  operating_state: OPERATING_STATE_READY  link { round_trip_ms: 0  since_last_heard_ms: 10 } }

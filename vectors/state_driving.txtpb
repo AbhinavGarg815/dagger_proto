@@ -1,0 +1,17 @@
+# A full state while running a route: every optional part present.
+rover_id: "dagger-1"
+sent_at_ms: 1791454417200
+state {
+  seq: 1234
+  operating_state: OPERATING_STATE_RUNNING_ROUTE
+  position { latitude_deg: 28.5449305  longitude_deg: 77.1926047  horizontal_accuracy_m: 0.02  quality: QUALITY_GOOD }
+  heading { heading_deg: 271.5  accuracy_deg: 0.3  quality: QUALITY_GOOD }
+  speed_mps: 0.75
+  battery { percent: 64.5  voltage_v: 24.1 }
+  link { round_trip_ms: 6  since_last_heard_ms: 120 }
+  readiness { id: CHECK_FLIGHT_CONTROLLER  status: CHECK_STATUS_PASS  blocks: [JOB_RUN_ROUTE, JOB_GO_TO_PLACE, JOB_FOLLOW, JOB_COME_HOME] }
+  readiness { id: CHECK_HEADING  status: CHECK_STATUS_WARN  values { key: "valid_percent"  value: 88 } }
+  readiness { id: CHECK_BATTERY  status: CHECK_STATUS_PASS  blocks: [JOB_RUN_ROUTE]  values { key: "percent"  value: 64.5 } }
+  armed: true
+  active_alerts { id: 7  code: ALERT_LINK_WEAK  severity: SEVERITY_WARNING  raised_at_ms: 1791454410000 }
+}
