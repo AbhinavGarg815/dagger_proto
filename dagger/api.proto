@@ -1,0 +1,258 @@
+// Dagger app <-> rover contract. Schema v0 (draft, Phase 0).
+//
+// One file is the whole interface between the operator app (Kotlin) and the
+// rover gateway (Python). Code for both sides is generated from it.
+//
+// TRANSPORT
+//   WebSocket, binary frames. Every frame carries exactly one Envelope.
+//   Fake rover: ws://<host>:8082/api   (gateway port to be fixed in Phase 1)
+//
+// RULES (docs/handoff.md section 8) — these are not optional:
+//   1. Version handshake on connect. The app's first message is Hello. The rover
+//      answers HelloReply; if `accepted` is false the app shows "Update needed"
+//      and sends nothing else.
+//   2. Only ADD fields. Never renumber, never reuse a number, never change a
+//      type. A field that is no longer wanted is left in place, or its number is
+//      listed in `reserved`.
+//   3. Commands are safe to repeat. A command carries a `command_id`; resending
+//      the same id has no second effect, and gets the same CommandResult again.
+//   4. The rover advertises what it supports (HelloReply.capabilities). The app
+//      shows only those behaviours.
+//   5. STOP jumps the queue, is resent until acknowledged, and needs no
+//      confirmation from the person.
+//   6. Alerts and rejections are codes plus values. The app owns the wording,
+//      so translation never needs a rover change.
+//   7. Every message carries a rover ID, so a fleet view later is one more
+//      client, not a new protocol.
+//
+// UNITS: SI throughout, stated in each field name or comment. Times are
+// milliseconds. Angles are degrees. Positions are WGS84.
+
+syntax = "proto3";
+
+package dagger.api;
+
+option java_package = "com.cfr.daggergcs.protocol";
+option java_multiple_files = true;
+
+// Bumped whenever the meaning of the contract changes in a way an older peer
+// would misread. Adding a field does NOT need a bump.
+// v0: this draft.
+enum ProtocolVersion {
+  PROTOCOL_VERSION_UNSPECIFIED = 0;
+  PROTOCOL_VERSION_0 = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Framing
+// ---------------------------------------------------------------------------
+
+message Envelope {
+  // The rover this message is from (rover -> app) or for (app -> rover).
+  // Before the handshake the app may leave it empty; the rover fills it in
+  // HelloReply and the app uses it from then on.
+  string rover_id = 1;
+
+  // Sender's wall clock, UTC, milliseconds since the Unix epoch. For logs and
+  // for showing "last heard N s ago". Never used to measure delay: the two
+  // clocks are not synchronised. Heartbeat carries what is needed for that.
+  uint64 sent_at_ms = 2;
+
+  oneof body {
+    Hello hello = 10;
+    HelloReply hello_reply = 11;
+    Heartbeat heartbeat = 12;
+    RoverState state = 13;
+    Command command = 14;
+    CommandResult command_result = 15;
+    // 16 is intended for Event (alerts, waypoint reached) in v1.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Handshake
+// ---------------------------------------------------------------------------
+
+// App -> rover, first message on every connection.
+message Hello {
+  ProtocolVersion protocol_version = 1;
+  // The app's own version, e.g. "0.1.0 (12)". For logs and update offers.
+  string app_version = 2;
+  // Identifies the handset, stable across restarts. For logs and, later,
+  // for telling several handsets apart.
+  string client_id = 3;
+}
+
+// Rover -> app, answer to Hello.
+message HelloReply {
+  // False when the rover cannot talk to this app version. The app then shows
+  // "Update needed" and does nothing else on this connection.
+  bool accepted = 1;
+  ProtocolVersion protocol_version = 2;
+  string rover_id = 3;
+  // Human-readable rover name for the Connect screen, e.g. "Dagger 1".
+  string rover_name = 4;
+  string rover_software_version = 5;
+  // What this rover can do. The app shows only these.
+  repeated Capability capabilities = 6;
+}
+
+enum Capability {
+  CAPABILITY_UNSPECIFIED = 0;
+  CAPABILITY_STOP = 1;
+  // Later: CAPABILITY_RUN_ROUTE, CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
+}
+
+// ---------------------------------------------------------------------------
+// Heartbeat — both directions, 4 Hz
+// ---------------------------------------------------------------------------
+//
+// Each side sends its own heartbeats and echoes the last one it received. That
+// lets each side measure the round trip on its OWN clock, with no clock sync:
+//   round_trip = now - echo_sent_time_ms - echo_hold_ms
+// Silence is what matters most: the rover's link-loss policy (follow stops
+// after 1.5 s without the app) is driven by missing heartbeats.
+
+message Heartbeat {
+  // Increases by one per heartbeat from this sender, per connection.
+  uint32 seq = 1;
+  // Sender's monotonic clock, milliseconds. Only ever compared with itself.
+  uint64 sent_time_ms = 2;
+
+  // Echo of the most recent heartbeat received from the other side.
+  uint32 echo_seq = 3;
+  uint64 echo_sent_time_ms = 4;
+  // How long the sender held that heartbeat before echoing it.
+  uint32 echo_hold_ms = 5;
+}
+
+// ---------------------------------------------------------------------------
+// State — rover -> app, 5 Hz, latest wins, never queued
+// ---------------------------------------------------------------------------
+//
+// A complete picture every time: the app draws the newest one it has and
+// throws older ones away. Nothing in it is a delta.
+
+message RoverState {
+  // Increases by one per state message, per connection. Lets the app drop a
+  // late-arriving older state.
+  uint64 seq = 1;
+
+  OperatingState operating_state = 2;
+
+  // Absent when the rover has no position at all.
+  Position position = 3;
+  // Absent when the rover does not know which way it is facing. Kept separate
+  // from position on purpose: GNSS heading fails differently (and is fixed
+  // differently) from GNSS position.
+  Heading heading = 4;
+
+  // Over the ground, metres per second, never negative.
+  float speed_mps = 5;
+
+  // Absent when the rover cannot measure it. Never sent as a made-up value:
+  // a battery gauge that cannot measure is worse than none.
+  Battery battery = 6;
+
+  // The rover's own view of the app link, from its heartbeats.
+  Link link = 7;
+}
+
+// The one state machine the gateway owns. The app shows this and never
+// invents its own.
+enum OperatingState {
+  OPERATING_STATE_UNSPECIFIED = 0;
+  OPERATING_STATE_STARTING = 1;       // services coming up
+  OPERATING_STATE_NOT_READY = 2;      // up, but a readiness check fails
+  OPERATING_STATE_READY = 3;
+  OPERATING_STATE_RUNNING_ROUTE = 4;
+  OPERATING_STATE_FOLLOWING = 5;
+  OPERATING_STATE_PAUSED = 6;
+  OPERATING_STATE_STOPPED = 7;        // stopped by a STOP command
+  OPERATING_STATE_FAULT = 8;
+}
+
+// How far the app may trust a position or heading. Deliberately in terms of
+// what the operator can be told, not in GNSS fix types: the gateway maps fix
+// type, accuracy and EKF health onto these.
+enum Quality {
+  QUALITY_UNSPECIFIED = 0;
+  QUALITY_NONE = 1;     // no usable value
+  QUALITY_POOR = 2;     // usable for showing, not for driving a route
+  QUALITY_GOOD = 3;     // good enough to drive a route
+}
+
+message Position {
+  double latitude_deg = 1;
+  double longitude_deg = 2;
+  // One-sigma horizontal accuracy, metres.
+  float horizontal_accuracy_m = 3;
+  Quality quality = 4;
+}
+
+message Heading {
+  // Direction the rover is facing, degrees clockwise from true north, [0, 360).
+  float heading_deg = 1;
+  // One-sigma accuracy, degrees.
+  float accuracy_deg = 2;
+  Quality quality = 3;
+}
+
+message Battery {
+  // State of charge, 0 to 100.
+  float percent = 1;
+  float voltage_v = 2;
+}
+
+message Link {
+  // Round trip measured by the rover from the app's heartbeats. Absent until
+  // the first echo arrives; 0 is a real reading (a fast local link).
+  optional uint32 round_trip_ms = 1;
+  // Milliseconds since the rover last heard from this app.
+  uint32 since_last_heard_ms = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Commands — app -> rover, reliable, each answered by a CommandResult
+// ---------------------------------------------------------------------------
+
+message Command {
+  // Unique per command, chosen by the app (a UUID). Resending the same id is
+  // safe and has no second effect (rule 3).
+  string command_id = 1;
+
+  oneof kind {
+    // STOP jumps the queue on both sides, is resent until a CommandResult
+    // arrives, and never asks the person to confirm (rule 5).
+    Stop stop = 10;
+  }
+}
+
+// Bring the rover to a stop and hold. Never a substitute for the RC sticks,
+// which reach the flight controller on their own path.
+message Stop {}
+
+message CommandResult {
+  string command_id = 1;
+  CommandOutcome outcome = 2;
+  // Set when outcome is REJECTED. The app turns the code into words.
+  RejectReason reject_reason = 3;
+}
+
+enum CommandOutcome {
+  COMMAND_OUTCOME_UNSPECIFIED = 0;
+  COMMAND_OUTCOME_ACCEPTED = 1;
+  COMMAND_OUTCOME_REJECTED = 2;
+}
+
+enum RejectReason {
+  REJECT_REASON_UNSPECIFIED = 0;
+  // This rover does not support the command (see HelloReply.capabilities).
+  REJECT_REASON_NOT_SUPPORTED = 1;
+  // Not allowed in the current operating state.
+  REJECT_REASON_NOT_IN_THIS_STATE = 2;
+  // Envelope.rover_id does not match this rover.
+  REJECT_REASON_WRONG_ROVER = 3;
+  // Sent before a successful handshake.
+  REJECT_REASON_NO_HANDSHAKE = 4;
+}
