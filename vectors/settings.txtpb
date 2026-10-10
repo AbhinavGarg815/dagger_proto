@@ -1,0 +1,11 @@
+rover_id: "dagger-1"
+sent_at_ms: 1791454416620
+settings {
+  heartbeat_period_ms: 250
+  state_period_ms: 200
+  follow_stop_after_silence_ms: 1500
+  route_pause_after_silence_ms: 3000
+  route_pause_after_silence_min_ms: 1500
+  route_pause_after_silence_max_ms: 10000
+  max_speed_mps: 1.0
+}

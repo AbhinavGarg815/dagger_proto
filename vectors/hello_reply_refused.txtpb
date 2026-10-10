@@ -1,0 +1,4 @@
+# The app must show "Update needed" and send nothing else.
+rover_id: "dagger-1"
+sent_at_ms: 1791454416610
+hello_reply { accepted: false  protocol_version: PROTOCOL_VERSION_1  rover_id: "dagger-1"  rover_name: "Dagger 1"  rover_software_version: "gateway 0.1.0" }

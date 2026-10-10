@@ -1,0 +1,3 @@
+rover_id: "dagger-1"
+sent_at_ms: 1791454417000
+heartbeat { seq: 42  sent_time_ms: 15325000  echo_seq: 17  echo_sent_time_ms: 99001234  echo_hold_ms: 3 }

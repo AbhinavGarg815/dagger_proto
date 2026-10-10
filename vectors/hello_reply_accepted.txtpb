@@ -1,0 +1,10 @@
+rover_id: "dagger-1"
+sent_at_ms: 1791454416610
+hello_reply {
+  accepted: true
+  protocol_version: PROTOCOL_VERSION_1
+  rover_id: "dagger-1"
+  rover_name: "Dagger 1"
+  rover_software_version: "gateway 0.1.0"
+  capabilities: [CAPABILITY_STOP, CAPABILITY_READINESS, CAPABILITY_ALERTS]
+}

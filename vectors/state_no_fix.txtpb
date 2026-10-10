@@ -1,0 +1,10 @@
+# Starting up: no position, no heading, no battery reading, round trip not yet
+# measured. Every one of those must arrive as ABSENT, not as zeros.
+rover_id: "dagger-1"
+sent_at_ms: 1791454400000
+state {
+  seq: 1
+  operating_state: OPERATING_STATE_STARTING
+  link { since_last_heard_ms: 0 }
+  readiness { id: CHECK_POSITION  status: CHECK_STATUS_PENDING  blocks: [JOB_RUN_ROUTE, JOB_GO_TO_PLACE, JOB_COME_HOME] }
+}

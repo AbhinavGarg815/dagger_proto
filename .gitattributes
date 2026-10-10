@@ -1,0 +1,6 @@
+# Recorded contract messages are exact bytes: never convert line endings.
+*.bin binary
+*.proto text eol=lf
+*.txtpb text eol=lf
+*.py text eol=lf
+*.md text eol=lf
