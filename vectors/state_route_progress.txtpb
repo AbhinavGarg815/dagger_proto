@@ -1,0 +1,10 @@
+# Running a route: point 2 of 3, a quarter of the way along.
+rover_id: "dagger-1"
+sent_at_ms: 1791454418200
+state {
+  seq: 1300
+  operating_state: OPERATING_STATE_RUNNING_ROUTE
+  speed_mps: 0.75
+  armed: true
+  route { route_id: "r-0001"  target_index: 2  waypoint_count: 3  fraction_done: 0.25  distance_remaining_m: 64.875 }
+}

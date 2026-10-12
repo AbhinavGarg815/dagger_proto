@@ -1,0 +1,4 @@
+# StartRoute refused: the motors are not armed (arming stays on the RC switch).
+rover_id: "dagger-1"
+sent_at_ms: 1791454418410
+command_result { command_id: "0d5e8f4a-3c21-4b6e-8f0a-7e2d9c1b5a34"  outcome: COMMAND_OUTCOME_REJECTED  reject_reason: REJECT_REASON_NOT_ARMED }

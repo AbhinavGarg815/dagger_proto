@@ -1,0 +1,15 @@
+# Recording while the operator drives: two points so far.
+rover_id: "dagger-1"
+sent_at_ms: 1791454418300
+state {
+  seq: 1400
+  operating_state: OPERATING_STATE_RECORDING
+  speed_mps: 0.5
+  armed: true
+  recording {
+    waypoints { latitude_deg: 28.5449305  longitude_deg: 77.1926047 }
+    waypoints { latitude_deg: 28.5449755  longitude_deg: 77.1926047 }
+    length_m: 5
+    suggested_name: "Route 3"
+  }
+}

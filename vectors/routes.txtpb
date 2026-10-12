@@ -1,0 +1,22 @@
+# The saved routes, as sent after the handshake and whenever they change.
+rover_id: "dagger-1"
+sent_at_ms: 1791454418100
+routes {
+  routes {
+    id: "r-0001"
+    name: "Yard loop"
+    length_m: 86.5
+    waypoints { latitude_deg: 28.5449305  longitude_deg: 77.1926047 }
+    waypoints { latitude_deg: 28.5451200  longitude_deg: 77.1928800 }
+    waypoints { latitude_deg: 28.5449305  longitude_deg: 77.1931000 }
+    created_at_ms: 1791450000000
+  }
+  routes {
+    id: "r-0002"
+    name: "Route 2"
+    length_m: 12.25
+    waypoints { latitude_deg: 28.5449305  longitude_deg: 77.1926047 }
+    waypoints { latitude_deg: 28.5450000  longitude_deg: 77.1926047 }
+    created_at_ms: 1791451000000
+  }
+}

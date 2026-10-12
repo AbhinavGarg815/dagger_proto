@@ -77,6 +77,10 @@ message Envelope {
     RoverSettings settings = 17;
     // 18 is intended for the video channel (Phase 4). Video travels on its own
     // WebSocket so a large frame can never delay a STOP.
+
+    // Rover -> app: the saved routes. Sent right after HelloReply (with the
+    // settings) and again whenever the list changes. Complete every time.
+    RouteList routes = 19;
   }
 }
 
@@ -116,7 +120,9 @@ enum Capability {
   CAPABILITY_STOP = 1;
   CAPABILITY_READINESS = 2;
   CAPABILITY_ALERTS = 3;
-  // Later: CAPABILITY_RUN_ROUTE, CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
+  CAPABILITY_RUN_ROUTE = 4;      // runs saved routes (StartRoute, Pause, Resume, Cancel)
+  CAPABILITY_RECORD_ROUTE = 5;   // records a route while the operator drives
+  // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +191,13 @@ message RoverState {
   // Everything currently wrong or waiting, highest severity first. Complete
   // every time: an alert that is not here is not active.
   repeated Alert active_alerts = 10;
+
+  // Absent unless a route is running or paused.
+  RouteProgress route = 11;
+
+  // Absent unless a recording is in progress, or stopped and not yet saved or
+  // discarded (a STOP keeps the points; the operator then saves or discards).
+  RecordingProgress recording = 12;
 }
 
 // The one state machine the gateway owns. The app shows this and never
@@ -199,6 +212,7 @@ enum OperatingState {
   OPERATING_STATE_PAUSED = 6;
   OPERATING_STATE_STOPPED = 7;        // stopped by a STOP command
   OPERATING_STATE_FAULT = 8;
+  OPERATING_STATE_RECORDING = 9;      // the operator drives; the rover takes notes
 }
 
 // How far the app may trust a position or heading. Deliberately in terms of
@@ -278,6 +292,7 @@ enum Job {
   JOB_GO_TO_PLACE = 2;
   JOB_FOLLOW = 3;
   JOB_COME_HOME = 4;
+  JOB_RECORD_ROUTE = 5;
 }
 
 // ---------------------------------------------------------------------------
@@ -334,7 +349,14 @@ message Event {
     // The id of an alert that is no longer active.
     uint32 alert_cleared = 11;
     StateChange state_changed = 12;
+    // A point of the running route was reached.
+    WaypointReached waypoint_reached = 13;
   }
+}
+
+message WaypointReached {
+  string route_id = 1;
+  uint32 index = 2;  // 1-based
 }
 
 message StateChange {
@@ -376,6 +398,8 @@ message RoverSettings {
   uint32 route_pause_after_silence_max_ms = 6;
   // Top speed the rover will drive any job at, m/s.
   float max_speed_mps = 7;
+  // A recording keeps a point every this many metres (and at sharp turns).
+  float record_point_spacing_m = 8;
 }
 
 message Link {
@@ -399,12 +423,39 @@ message Command {
     // STOP jumps the queue on both sides, is resent until a CommandResult
     // arrives, and never asks the person to confirm (rule 5).
     Stop stop = 10;
+    StartRoute start_route = 11;
+    PauseRoute pause_route = 12;
+    ResumeRoute resume_route = 13;
+    CancelRoute cancel_route = 14;
+    StartRecording start_recording = 15;
+    SaveRecording save_recording = 16;
+    DiscardRecording discard_recording = 17;
   }
 }
 
 // Bring the rover to a stop and hold. Never a substitute for the RC sticks,
 // which reach the flight controller on their own path.
 message Stop {}
+
+// Run a saved route from its first point. Accepted only when READY, armed,
+// and no check that blocks JOB_RUN_ROUTE fails. Slide-to-start is the app's.
+message StartRoute { string route_id = 1; }
+// The running route: hold in place.
+message PauseRoute {}
+// The paused route: carry on to the same target point.
+message ResumeRoute {}
+// End the running or paused route; the rover holds and becomes READY.
+message CancelRoute {}
+
+// Start noting the rover's path while the operator drives with the sticks.
+// Sends nothing to the flight controller.
+message StartRecording {}
+// Keep the recording as a route. An empty name means the rover's
+// RecordingProgress.suggested_name. Accepted while recording, or after a STOP
+// that ended one.
+message SaveRecording { string name = 1; }
+// Throw the recording away.
+message DiscardRecording {}
 
 message CommandResult {
   string command_id = 1;
@@ -429,4 +480,59 @@ enum RejectReason {
   REJECT_REASON_WRONG_ROVER = 3;
   // Sent before a successful handshake.
   REJECT_REASON_NO_HANDSHAKE = 4;
+  // A readiness check that blocks this job is not passing.
+  REJECT_REASON_NOT_READY = 5;
+  // No saved route with that id.
+  REJECT_REASON_UNKNOWN_ROUTE = 6;
+  // The motors are not armed: arm with the RC switch, then try again.
+  REJECT_REASON_NOT_ARMED = 7;
+  // A route with that name exists; overwriting needs the PIN (Phase 5).
+  REJECT_REASON_NAME_TAKEN = 8;
+  // Fewer than two points were recorded.
+  REJECT_REASON_TOO_SHORT = 9;
+}
+
+// ---------------------------------------------------------------------------
+// Routes — made in the app by driving (Phase 3); the rover stores them
+// ---------------------------------------------------------------------------
+
+message RouteList {
+  repeated RouteSummary routes = 1;
+}
+
+message RouteSummary {
+  // Stable, chosen by the rover.
+  string id = 1;
+  // The operator's words, e.g. "Yard loop".
+  string name = 2;
+  double length_m = 3;
+  // In order, to draw the route on the map.
+  repeated Waypoint waypoints = 4;
+  // Rover's wall clock (UTC ms) when it was saved.
+  uint64 created_at_ms = 5;
+}
+
+// WGS84. A point on a SLAM map (map id + x, y) is added with Phase 6; indoors
+// the rover already reports lat/lon from its georeferenced map.
+message Waypoint {
+  double latitude_deg = 1;
+  double longitude_deg = 2;
+}
+
+message RouteProgress {
+  string route_id = 1;
+  // The point the rover is driving to, 1-based: "point 3 of 12".
+  uint32 target_index = 2;
+  uint32 waypoint_count = 3;
+  // 0..1 by distance along the route.
+  float fraction_done = 4;
+  double distance_remaining_m = 5;
+}
+
+message RecordingProgress {
+  // The points so far, to draw the path as it grows.
+  repeated Waypoint waypoints = 1;
+  double length_m = 2;
+  // A name ready for the save box, e.g. "Route 3".
+  string suggested_name = 3;
 }

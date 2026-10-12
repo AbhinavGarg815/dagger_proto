@@ -1,0 +1,3 @@
+rover_id: "dagger-1"
+sent_at_ms: 1791454418600
+event { seq: 7  waypoint_reached { route_id: "r-0001"  index: 2 } }

@@ -1,0 +1,3 @@
+rover_id: "dagger-1"
+sent_at_ms: 1791454418500
+command { command_id: "9a7b3c1d-5e2f-4a6b-8c0d-1e3f5a7b9c2d"  save_recording { name: "Yard loop" } }
