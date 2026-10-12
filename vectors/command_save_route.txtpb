@@ -1,0 +1,12 @@
+# A mission planned on the map: three waypoints, saved under a name.
+rover_id: "dagger-1"
+sent_at_ms: 1791454418700
+command {
+  command_id: "5c2e9a7f-1b3d-4e6f-8a0c-2d4f6b8a0c1e"
+  save_route {
+    name: "Gate run"
+    waypoints { latitude_deg: 26.7480709  longitude_deg: 75.8553030 }
+    waypoints { latitude_deg: 26.7482500  longitude_deg: 75.8553030 }
+    waypoints { latitude_deg: 26.7482500  longitude_deg: 75.8555000 }
+  }
+}

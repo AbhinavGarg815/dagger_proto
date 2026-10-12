@@ -122,6 +122,7 @@ enum Capability {
   CAPABILITY_ALERTS = 3;
   CAPABILITY_RUN_ROUTE = 4;      // runs saved routes (StartRoute, Pause, Resume, Cancel)
   CAPABILITY_RECORD_ROUTE = 5;   // records a route while the operator drives
+  CAPABILITY_PLAN_ROUTE = 6;     // stores missions planned on the map in the app (SaveRoute)
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -430,6 +431,7 @@ message Command {
     StartRecording start_recording = 15;
     SaveRecording save_recording = 16;
     DiscardRecording discard_recording = 17;
+    SaveRoute save_route = 18;
   }
 }
 
@@ -456,6 +458,15 @@ message StartRecording {}
 message SaveRecording { string name = 1; }
 // Throw the recording away.
 message DiscardRecording {}
+
+// Keep a mission planned in the app: waypoints placed on the map, in driving
+// order. Moves nothing, so it is accepted in any state. An empty name means the
+// rover's suggested one. Rejected TOO_SHORT with fewer than two waypoints and
+// NAME_TAKEN when the name is used (overwriting needs the PIN, later).
+message SaveRoute {
+  string name = 1;
+  repeated Waypoint waypoints = 2;
+}
 
 message CommandResult {
   string command_id = 1;
