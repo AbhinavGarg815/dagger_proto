@@ -1,0 +1,9 @@
+# StartRoute refused: waypoint 1 is on something the rover sees as an obstacle.
+rover_id: "dagger-1"
+sent_at_ms: 1791884000200
+command_result {
+  command_id: "0d5e8f4a-3c21-4b6e-8f0a-7e2d9c1b5a34"
+  outcome: COMMAND_OUTCOME_REJECTED
+  reject_reason: REJECT_REASON_WAYPOINT_BLOCKED
+  blocked_waypoint: 1
+}

@@ -1,0 +1,17 @@
+# Coming home: home known, the way home being driven (three points shown).
+rover_id: "dagger-1"
+sent_at_ms: 1791884000400
+state {
+  operating_state: OPERATING_STATE_COMING_HOME
+  armed: true
+  route {
+    target_index: 2
+    waypoint_count: 3
+    fraction_done: 0.4
+    distance_remaining_m: 12.5
+    waypoints { latitude_deg: 26.7481200  longitude_deg: 75.8553900 }
+    waypoints { latitude_deg: 26.7480700  longitude_deg: 75.8553400 }
+    waypoints { latitude_deg: 26.7480200  longitude_deg: 75.8553000 }
+  }
+  home { latitude_deg: 26.7480200  longitude_deg: 75.8553000  horizontal_accuracy_m: 1.2  quality: QUALITY_POOR }
+}

@@ -124,6 +124,7 @@ enum Capability {
   CAPABILITY_RECORD_ROUTE = 5;   // records a route while the operator drives
   CAPABILITY_PLAN_ROUTE = 6;     // stores missions planned on the map in the app (SaveRoute)
   CAPABILITY_IMPORT_MISSION = 7; // keeps the mission last sent to the autopilot, e.g. from QGC (ImportMission)
+  CAPABILITY_COME_HOME = 8;      // drives back to where the session's first job started (ComeHome)
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -200,6 +201,10 @@ message RoverState {
   // Absent unless a recording is in progress, or stopped and not yet saved or
   // discarded (a STOP keeps the points; the operator then saves or discards).
   RecordingProgress recording = 12;
+
+  // Where Come home goes: the rover's position when the first job since the
+  // gateway started began. Absent until then. The app draws it on the map.
+  Position home = 13;
 }
 
 // The one state machine the gateway owns. The app shows this and never
@@ -215,6 +220,7 @@ enum OperatingState {
   OPERATING_STATE_STOPPED = 7;        // stopped by a STOP command
   OPERATING_STATE_FAULT = 8;
   OPERATING_STATE_RECORDING = 9;      // the operator drives; the rover takes notes
+  OPERATING_STATE_COMING_HOME = 10;   // driving back home along its own trail
 }
 
 // How far the app may trust a position or heading. Deliberately in terms of
@@ -378,6 +384,7 @@ enum StateReason {
   STATE_REASON_FAULT = 5;
   STATE_REASON_RC_OVERRIDE = 6;      // the sticks took over
   STATE_REASON_READINESS = 7;        // a readiness check changed
+  STATE_REASON_HOME_REACHED = 8;     // Come home arrived
 }
 
 // ---------------------------------------------------------------------------
@@ -434,6 +441,7 @@ message Command {
     DiscardRecording discard_recording = 17;
     SaveRoute save_route = 18;
     ImportMission import_mission = 19;
+    ComeHome come_home = 20;
   }
 }
 
@@ -479,11 +487,20 @@ message SaveRoute {
 // waypoints, TOO_SHORT with fewer than two, NAME_TAKEN as for SaveRoute.
 message ImportMission { string name = 1; }
 
+// Drive back home (RoverState.home) along the rover's own trail, thinned, with
+// Nav2 going around anything new; trail points that are blocked are skipped.
+// Accepted when READY, armed, no check blocking JOB_COME_HOME fails, and a
+// home is known (else NO_HOME). Pause / Resume / Cancel act on it as on a
+// route; RoverState.route describes it, with route_id empty and the points.
+message ComeHome {}
+
 message CommandResult {
   string command_id = 1;
   CommandOutcome outcome = 2;
   // Set when outcome is REJECTED. The app turns the code into words.
   RejectReason reject_reason = 3;
+  // With WAYPOINT_BLOCKED: which waypoint, 1-based.
+  uint32 blocked_waypoint = 4;
 }
 
 enum CommandOutcome {
@@ -514,6 +531,11 @@ enum RejectReason {
   REJECT_REASON_TOO_SHORT = 9;
   // ImportMission: the autopilot holds no mission, or it could not be read.
   REJECT_REASON_NO_MISSION = 10;
+  // ComeHome: no home yet (no job has started since the rover was switched on).
+  REJECT_REASON_NO_HOME = 11;
+  // StartRoute: a waypoint lies on something the rover sees as an obstacle and
+  // no clear spot is within 1 m of it (CommandResult.blocked_waypoint says which).
+  REJECT_REASON_WAYPOINT_BLOCKED = 12;
 }
 
 // ---------------------------------------------------------------------------
@@ -551,6 +573,9 @@ message RouteProgress {
   // 0..1 by distance along the route.
   float fraction_done = 4;
   double distance_remaining_m = 5;
+  // The points being driven when they are not a saved route — the way home —
+  // at most 200, in driving order. Empty for a saved route (the app has it).
+  repeated Waypoint waypoints = 6;
 }
 
 message RecordingProgress {
