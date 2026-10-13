@@ -1,0 +1,7 @@
+# Keep the mission last sent to the autopilot (from QGroundControl) under a name.
+rover_id: "dagger-1"
+sent_at_ms: 1791540818700
+command {
+  command_id: "9a1f3c5e-7b2d-4f60-8e1a-3c5e7b9d1f20"
+  import_mission { name: "Field loop" }
+}

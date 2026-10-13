@@ -123,6 +123,7 @@ enum Capability {
   CAPABILITY_RUN_ROUTE = 4;      // runs saved routes (StartRoute, Pause, Resume, Cancel)
   CAPABILITY_RECORD_ROUTE = 5;   // records a route while the operator drives
   CAPABILITY_PLAN_ROUTE = 6;     // stores missions planned on the map in the app (SaveRoute)
+  CAPABILITY_IMPORT_MISSION = 7; // keeps the mission last sent to the autopilot, e.g. from QGC (ImportMission)
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -432,6 +433,7 @@ message Command {
     SaveRecording save_recording = 16;
     DiscardRecording discard_recording = 17;
     SaveRoute save_route = 18;
+    ImportMission import_mission = 19;
   }
 }
 
@@ -468,6 +470,15 @@ message SaveRoute {
   repeated Waypoint waypoints = 2;
 }
 
+// Keep the mission last sent to the autopilot (planned in QGroundControl or
+// Mission Planner on another device) as a saved route. The rover reads the
+// autopilot's mission, never writes it. Only waypoints with a position are kept,
+// in order; the home point and other items (speeds, loiters, return home) are
+// left out. Moves nothing, so it is accepted in any state. An empty name means
+// the rover's suggested one. Rejected NO_MISSION when the autopilot holds no
+// waypoints, TOO_SHORT with fewer than two, NAME_TAKEN as for SaveRoute.
+message ImportMission { string name = 1; }
+
 message CommandResult {
   string command_id = 1;
   CommandOutcome outcome = 2;
@@ -501,6 +512,8 @@ enum RejectReason {
   REJECT_REASON_NAME_TAKEN = 8;
   // Fewer than two points were recorded.
   REJECT_REASON_TOO_SHORT = 9;
+  // ImportMission: the autopilot holds no mission, or it could not be read.
+  REJECT_REASON_NO_MISSION = 10;
 }
 
 // ---------------------------------------------------------------------------

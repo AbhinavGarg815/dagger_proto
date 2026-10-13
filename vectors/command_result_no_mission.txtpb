@@ -1,0 +1,8 @@
+# The autopilot holds no mission to import.
+rover_id: "dagger-1"
+sent_at_ms: 1791540818900
+command_result {
+  command_id: "9a1f3c5e-7b2d-4f60-8e1a-3c5e7b9d1f20"
+  outcome: COMMAND_OUTCOME_REJECTED
+  reject_reason: REJECT_REASON_NO_MISSION
+}
