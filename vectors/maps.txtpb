@@ -1,0 +1,31 @@
+# The saved maps, as sent after the handshake and whenever they change: one
+# tied to the Earth (and shown under missions), one made indoors.
+rover_id: "dagger-1"
+sent_at_ms: 1792070000000
+maps {
+  maps {
+    name: "Yard"
+    width_m: 50.6
+    height_m: 46.45
+    placed: true
+    corners { latitude_deg: 28.5452000  longitude_deg: 77.1923000 }
+    corners { latitude_deg: 28.5452000  longitude_deg: 77.1928150 }
+    corners { latitude_deg: 28.5447820  longitude_deg: 77.1928150 }
+    corners { latitude_deg: 28.5447820  longitude_deg: 77.1923000 }
+    placed_error_m: 1.09
+    picture_path: "/maps/Yard.png?v=1792069000"
+    picture_width_px: 1012
+    picture_height_px: 929
+    created_at_ms: 1792069000000
+  }
+  maps {
+    name: "Workshop"
+    width_m: 20
+    height_m: 12.5
+    picture_path: "/maps/Workshop.png?v=1792069500"
+    picture_width_px: 400
+    picture_height_px: 250
+    created_at_ms: 1792069500000
+  }
+  shown: "Yard"
+}

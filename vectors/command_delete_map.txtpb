@@ -1,0 +1,7 @@
+# Remove the saved map "Workshop" from the rover.
+rover_id: "dagger-1"
+sent_at_ms: 1792070200000
+command {
+  command_id: "de1e7e00-3c4d-4e5f-9a6b-7c8d9e0f1a2b"
+  delete_map { name: "Workshop" }
+}

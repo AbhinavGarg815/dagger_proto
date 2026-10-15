@@ -87,6 +87,11 @@ message Envelope {
     // Rover -> app, on the VIDEO channel: who the camera sees, for the frame
     // with the same stamp (sent just after it, ~50 ms later).
     Targets targets = 20;
+
+    // Rover -> app: the saved maps, and which one is shown under missions.
+    // Sent right after HelloReply (with the routes) and again whenever either
+    // changes. Complete every time. Pictures are NOT in it: see MapSummary.
+    MapList maps = 21;
   }
 }
 
@@ -132,6 +137,7 @@ enum Capability {
   CAPABILITY_IMPORT_MISSION = 7; // keeps the mission last sent to the autopilot, e.g. from QGC (ImportMission)
   CAPABILITY_COME_HOME = 8;      // drives back to where the session's first job started (ComeHome)
   CAPABILITY_FOLLOW = 9;         // video + targets on /video; SelectTarget, StartFollow, StopFollow
+  CAPABILITY_MAPS = 10;          // the saved SLAM maps: MapList, pictures over HTTP; ShowMap, DeleteMap
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -509,6 +515,8 @@ message Command {
     StartFollow start_follow = 22;
     StopFollow stop_follow = 23;
     DeleteRoute delete_route = 24;
+    ShowMap show_map = 25;
+    DeleteMap delete_map = 26;
   }
 }
 
@@ -577,6 +585,16 @@ message StopFollow {}
 // supervisor role, Phase 5.)
 message DeleteRoute { string route_id = 1; }
 
+// Draw this saved map under missions on every app connected (MapList.shown),
+// or none when empty. Kept by the rover across restarts. Moves nothing.
+// Rejected UNKNOWN_MAP when there is no such map.
+message ShowMap { string name = 1; }
+
+// Remove a saved map from the rover for good (all its files). Moves nothing.
+// Rejected UNKNOWN_MAP; NOT_IN_THIS_STATE while the rover drives on it
+// (Step D). If it was shown, nothing is shown after.
+message DeleteMap { string name = 1; }
+
 message CommandResult {
   string command_id = 1;
   CommandOutcome outcome = 2;
@@ -621,6 +639,8 @@ enum RejectReason {
   REJECT_REASON_WAYPOINT_BLOCKED = 12;
   // StartFollow: nobody (or nothing selectable) is picked.
   REJECT_REASON_NO_TARGET = 13;
+  // ShowMap / DeleteMap: no saved map has that name.
+  REJECT_REASON_UNKNOWN_MAP = 14;
 }
 
 // ---------------------------------------------------------------------------
@@ -669,4 +689,39 @@ message RecordingProgress {
   double length_m = 2;
   // A name ready for the save box, e.g. "Route 3".
   string suggested_name = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Maps — SLAM maps the rover keeps (Step C)
+// ---------------------------------------------------------------------------
+
+message MapList {
+  repeated MapSummary maps = 1;
+  // The map drawn under missions (MapSummary.name), empty for none.
+  string shown = 2;
+}
+
+message MapSummary {
+  // Stable and unique; the operator's words, e.g. "Workshop". Also the id.
+  string name = 1;
+  // Size of the picture on the ground.
+  float width_m = 2;
+  float height_m = 3;
+  // Tied to the Earth (made with good GPS): `corners` is set.
+  bool placed = 4;
+  // When placed: where the picture's corners are on the Earth, in this order:
+  // top-left, top-right, bottom-right, bottom-left (as the picture is stored).
+  // The picture may be turned; draw it on these four points.
+  repeated Waypoint corners = 5;
+  // How far the map and GPS disagreed when it was tied (rms, metres); 0 when
+  // not placed.
+  float placed_error_m = 6;
+  // The picture: GET http://<rover host>:<port of /api><picture_path>, a PNG.
+  // Grey levels: 0 = wall, 255 = free; transparent = never seen. The path
+  // changes whenever the picture does, so the app may keep it by path.
+  string picture_path = 7;
+  uint32 picture_width_px = 8;
+  uint32 picture_height_px = 9;
+  // Rover's wall clock (UTC ms) when it was saved.
+  uint64 created_at_ms = 10;
 }

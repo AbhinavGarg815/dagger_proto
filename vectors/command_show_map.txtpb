@@ -1,0 +1,7 @@
+# Draw the map "Yard" under missions.
+rover_id: "dagger-1"
+sent_at_ms: 1792070100000
+command {
+  command_id: "5a0e1b2c-3d4e-4f50-8a6b-7c8d9e0f1a2b"
+  show_map { name: "Yard" }
+}
