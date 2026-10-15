@@ -1,0 +1,7 @@
+# Follow the picked person.
+rover_id: "dagger-1"
+sent_at_ms: 1792050000000
+command {
+  command_id: "f0110a1b-2c3d-4e5f-8a9b-0c1d2e3f4a5b"
+  start_follow {}
+}

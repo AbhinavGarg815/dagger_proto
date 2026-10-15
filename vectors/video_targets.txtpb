@@ -1,0 +1,13 @@
+# The video channel: who the camera sees in frame 1792050000.25 -- a person
+# (ranged, selectable, picked) and the ArUco marker.
+rover_id: "dagger-1"
+sent_at_ms: 1792050000300
+targets {
+  stamp_s: 1792050000.25
+  width: 640
+  height: 480
+  rotation_deg: 0
+  targets { id: 7  kind: TARGET_KIND_PERSON  outline: [210, 80, 330, 400]  selectable: true  range_m: 4.2  visible: true }
+  targets { id: 1000  kind: TARGET_KIND_MARKER  outline: [420, 200, 470, 205, 468, 255, 418, 250]  selectable: true  range_m: 6.1  visible: true }
+  selected_id: 7
+}

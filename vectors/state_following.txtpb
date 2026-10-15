@@ -1,0 +1,8 @@
+# Following person 7 at 3.4 m.
+rover_id: "dagger-1"
+sent_at_ms: 1792050000400
+state {
+  operating_state: OPERATING_STATE_FOLLOWING
+  armed: true
+  follow { target_id: 7  state: TARGET_STATE_TRACKING  range_m: 3.4 }
+}

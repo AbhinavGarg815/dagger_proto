@@ -75,12 +75,18 @@ message Envelope {
     // Rover -> app: limits and timings the app must use. Sent right after
     // HelloReply and again whenever they change. Never hard-coded in the app.
     RoverSettings settings = 17;
-    // 18 is intended for the video channel (Phase 4). Video travels on its own
-    // WebSocket so a large frame can never delay a STOP.
+    // Rover -> app, on the VIDEO channel only (ws://<rover>:8090/video, its own
+    // WebSocket, so a large frame can never delay a STOP on /api): the newest
+    // camera picture. Latest frame only: a slow link drops frames, never queues.
+    VideoFrame video_frame = 18;
 
     // Rover -> app: the saved routes. Sent right after HelloReply (with the
     // settings) and again whenever the list changes. Complete every time.
     RouteList routes = 19;
+
+    // Rover -> app, on the VIDEO channel: who the camera sees, for the frame
+    // with the same stamp (sent just after it, ~50 ms later).
+    Targets targets = 20;
   }
 }
 
@@ -125,6 +131,7 @@ enum Capability {
   CAPABILITY_PLAN_ROUTE = 6;     // stores missions planned on the map in the app (SaveRoute)
   CAPABILITY_IMPORT_MISSION = 7; // keeps the mission last sent to the autopilot, e.g. from QGC (ImportMission)
   CAPABILITY_COME_HOME = 8;      // drives back to where the session's first job started (ComeHome)
+  CAPABILITY_FOLLOW = 9;         // video + targets on /video; SelectTarget, StartFollow, StopFollow
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -205,6 +212,62 @@ message RoverState {
   // Where Come home goes: the rover's position when the first job since the
   // gateway started began. Absent until then. The app draws it on the map.
   Position home = 13;
+
+  // The person or marker picked to follow, and how the rover sees it. Absent
+  // when nothing is picked.
+  FollowStatus follow = 14;
+}
+
+message FollowStatus {
+  int32 target_id = 1;          // Target.id
+  TargetState state = 2;
+  float range_m = 3;            // 0 when unknown
+}
+
+// How the rover sees the picked target.
+enum TargetState {
+  TARGET_STATE_UNSPECIFIED = 0;
+  TARGET_STATE_TRACKING = 1;    // in the picture
+  TARGET_STATE_HOLD = 2;        // out of the picture, still held by the LiDAR
+  TARGET_STATE_LOST = 3;        // gone: following searches by turning, then stops
+}
+
+// ---------------------------------------------------------------------------
+// Video channel — rover -> app on ws://<rover>:8090/video
+// ---------------------------------------------------------------------------
+
+message VideoFrame {
+  double stamp_s = 1;           // camera time; Targets with the same stamp belong to it
+  uint32 width = 2;             // pixels, as the camera delivers them
+  uint32 height = 3;
+  int32 rotation_deg = 4;       // how the camera is mounted: rotate by this to show it upright
+  bytes jpeg = 5;
+}
+
+message Targets {
+  double stamp_s = 1;           // the VideoFrame these belong to
+  uint32 width = 2;
+  uint32 height = 3;
+  int32 rotation_deg = 4;
+  repeated Target targets = 5;
+  int32 selected_id = 6;        // -1: none
+}
+
+message Target {
+  int32 id = 1;                 // stable while seen; never reused
+  TargetKind kind = 2;
+  // PERSON: x1, y1, x2, y2. MARKER: its outline, 4 corners as x, y pairs.
+  // Pixels in the camera's own orientation (see rotation_deg).
+  repeated float outline = 3;
+  bool selectable = 4;          // a person ranged by the LiDAR, a marker seen often enough
+  float range_m = 5;            // 0 when unknown
+  bool visible = 6;             // seen in this frame (else carried on by the tracker)
+}
+
+enum TargetKind {
+  TARGET_KIND_UNSPECIFIED = 0;
+  TARGET_KIND_PERSON = 1;
+  TARGET_KIND_MARKER = 2;
 }
 
 // The one state machine the gateway owns. The app shows this and never
@@ -442,6 +505,9 @@ message Command {
     SaveRoute save_route = 18;
     ImportMission import_mission = 19;
     ComeHome come_home = 20;
+    SelectTarget select_target = 21;
+    StartFollow start_follow = 22;
+    StopFollow stop_follow = 23;
   }
 }
 
@@ -494,6 +560,16 @@ message ImportMission { string name = 1; }
 // route; RoverState.route describes it, with route_id empty and the points.
 message ComeHome {}
 
+// Pick who to follow (Target.id), or -1 to let go. Moves nothing.
+message SelectTarget { int32 target_id = 1; }
+// Follow the picked target. Accepted when READY, armed, no check blocking
+// JOB_FOLLOW fails (the camera among them), and a selectable target is picked
+// (else NO_TARGET). The link-loss rule stops following after
+// follow_stop_after_silence_ms of silence.
+message StartFollow {}
+// Stop following; the rover holds and becomes READY. Moves nothing.
+message StopFollow {}
+
 message CommandResult {
   string command_id = 1;
   CommandOutcome outcome = 2;
@@ -536,6 +612,8 @@ enum RejectReason {
   // StartRoute: a waypoint lies on something the rover sees as an obstacle and
   // no clear spot is within 1 m of it (CommandResult.blocked_waypoint says which).
   REJECT_REASON_WAYPOINT_BLOCKED = 12;
+  // StartFollow: nobody (or nothing selectable) is picked.
+  REJECT_REASON_NO_TARGET = 13;
 }
 
 // ---------------------------------------------------------------------------
