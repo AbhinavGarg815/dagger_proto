@@ -1,0 +1,7 @@
+# Remove the saved mission r-0002 from the rover.
+rover_id: "dagger-1"
+sent_at_ms: 1792060000000
+command {
+  command_id: "de1e7e00-1a2b-4c3d-8e4f-5a6b7c8d9e0f"
+  delete_route { route_id: "r-0002" }
+}

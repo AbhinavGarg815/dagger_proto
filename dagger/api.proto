@@ -508,6 +508,7 @@ message Command {
     SelectTarget select_target = 21;
     StartFollow start_follow = 22;
     StopFollow stop_follow = 23;
+    DeleteRoute delete_route = 24;
   }
 }
 
@@ -569,6 +570,12 @@ message SelectTarget { int32 target_id = 1; }
 message StartFollow {}
 // Stop following; the rover holds and becomes READY. Moves nothing.
 message StopFollow {}
+
+// Remove a saved route (a mission) from the rover for good. Moves nothing.
+// Rejected UNKNOWN_ROUTE when there is no such route, NOT_IN_THIS_STATE while
+// it is the route running or paused. (A PIN for this comes with the
+// supervisor role, Phase 5.)
+message DeleteRoute { string route_id = 1; }
 
 message CommandResult {
   string command_id = 1;
