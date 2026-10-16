@@ -1,0 +1,11 @@
+# The base's saved sites.
+rover_id: "dagger-1"
+sent_at_ms: 1792100100000
+base_sites {
+  sites {
+    name: "Yard base"
+    latitude_deg: 26.747812345
+    longitude_deg: 75.855401234
+    height_m: 418.237
+  }
+}

@@ -92,6 +92,11 @@ message Envelope {
     // Sent right after HelloReply (with the routes) and again whenever either
     // changes. Complete every time. Pictures are NOT in it: see MapSummary.
     MapList maps = 21;
+
+    // Rover -> app: the RTK base's saved sites (places the base stands, with
+    // known coordinates). Sent right after HelloReply and whenever the list
+    // changes. Complete every time.
+    BaseSites base_sites = 22;
   }
 }
 
@@ -139,6 +144,7 @@ enum Capability {
   CAPABILITY_FOLLOW = 9;         // video + targets on /video; SelectTarget, StartFollow, StopFollow
   CAPABILITY_MAPS = 10;          // the saved SLAM maps: MapList, pictures over HTTP; ShowMap, DeleteMap
   CAPABILITY_MAKE_MAP = 11;      // makes maps while the operator drives: StartMapping, SaveMap, DiscardMapping
+  CAPABILITY_BASE_STATION = 12;  // the RTK base: RoverState.base, BaseSites; SurveyBase, UseBaseSite, SaveBaseSite, DeleteBaseSite
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -231,6 +237,10 @@ message RoverState {
   // Where the rover is on a saved map (Step D1): set while it is finding itself
   // on the map shown under missions. Absent when no map is in use.
   MapPosition map_position = 16;
+
+  // The RTK base station, as the rover hears it over its radio. Absent when
+  // the rover has no base support.
+  BaseStation base = 17;
 }
 
 message FollowStatus {
@@ -318,6 +328,8 @@ message Position {
   // One-sigma horizontal accuracy, metres.
   float horizontal_accuracy_m = 3;
   Quality quality = 4;
+  // RTK: corrections from the base station in use. Set by rovers that know.
+  RtkStatus rtk = 5;
 }
 
 message Heading {
@@ -531,6 +543,10 @@ message Command {
     StartMapping start_mapping = 27;
     SaveMap save_map = 28;
     DiscardMapping discard_mapping = 29;
+    SurveyBase survey_base = 30;
+    UseBaseSite use_base_site = 31;
+    SaveBaseSite save_base_site = 32;
+    DeleteBaseSite delete_base_site = 33;
   }
 }
 
@@ -628,6 +644,25 @@ message SaveMap { string name = 1; }
 // NOT_IN_THIS_STATE when not mapping.
 message DiscardMapping {}
 
+// The RTK base (Step R1). None of these move the rover; all but SaveBaseSite and
+// DeleteBaseSite change where the rover thinks it is, so they are rejected
+// NOT_IN_THIS_STATE while a job runs (a mission, Follow, Return to Home), and
+// NO_BASE when the base is not heard.
+//
+// Survey a new spot: the base averages its own position where it stands
+// (BaseStation.mode SURVEYING) until it is good to BaseStation.survey_target_m,
+// then sends corrections from it (FIXED, survey_done, site empty) -- keep it
+// with SaveBaseSite to use the same spot another day.
+message SurveyBase {}
+// Use a saved site: the base sends corrections from that site's coordinates.
+// The base must stand on that site's mark. Rejected UNKNOWN_SITE.
+message UseBaseSite { string name = 1; }
+// Keep the position just surveyed as a site (empty name: the suggested one).
+// Rejected NOT_IN_THIS_STATE unless a survey is done and not yet kept, NAME_TAKEN.
+message SaveBaseSite { string name = 1; }
+// Forget a saved site. Rejected UNKNOWN_SITE. The base keeps going as it is.
+message DeleteBaseSite { string name = 1; }
+
 message CommandResult {
   string command_id = 1;
   CommandOutcome outcome = 2;
@@ -677,6 +712,10 @@ enum RejectReason {
   // StartRoute of a map mission: its map is not the one shown under missions,
   // or the rover has not found itself on it yet (MapPosition.located).
   REJECT_REASON_NOT_ON_MAP = 15;
+  // Base commands: the base station is not heard (off, or out of radio range).
+  REJECT_REASON_NO_BASE = 16;
+  // UseBaseSite / DeleteBaseSite: no saved site has that name.
+  REJECT_REASON_UNKNOWN_SITE = 17;
 }
 
 // ---------------------------------------------------------------------------
@@ -781,4 +820,51 @@ message MapPosition {
   // It has found itself on it (its laser scan fits the map's walls). Map
   // missions on this map may start.
   bool located = 2;
+}
+
+// ---------------------------------------------------------------------------
+// RTK base station (Step R1)
+// ---------------------------------------------------------------------------
+
+enum RtkStatus {
+  RTK_STATUS_UNSPECIFIED = 0;
+  RTK_STATUS_NONE = 1;          // no corrections in use: GPS alone, metres
+  RTK_STATUS_FLOAT = 2;         // corrections in use, not yet settled: decimetres
+  RTK_STATUS_FIXED = 3;         // settled: centimetres (relative to the base)
+}
+
+enum BaseMode {
+  BASE_MODE_UNSPECIFIED = 0;
+  BASE_MODE_NO_FIX = 1;         // the base has no GPS fix yet
+  BASE_MODE_SURVEYING = 2;      // averaging its own position (SurveyBase)
+  BASE_MODE_FIXED = 3;          // sending corrections from a known position
+}
+
+message BaseStation {
+  // Its messages arrive (over the rover's radio). False: off or out of range,
+  // and the rest says what it last said.
+  bool heard = 1;
+  BaseMode mode = 2;
+  // FIXED: the saved site it uses; empty when the position is a survey not yet kept.
+  string site = 3;
+  // SURVEYING: how good its position is so far, the goal, and for how long.
+  float survey_accuracy_m = 4;
+  float survey_target_m = 5;
+  uint32 survey_s = 6;
+  // A survey has finished and is not yet kept as a site (SaveBaseSite).
+  bool survey_done = 7;
+  // A name ready for the save box, e.g. "Site 3".
+  string suggested_site_name = 8;
+}
+
+message BaseSites {
+  repeated BaseSite sites = 1;
+}
+
+message BaseSite {
+  string name = 1;
+  // Where the base's antenna stands: WGS84, height above the ellipsoid.
+  double latitude_deg = 2;
+  double longitude_deg = 3;
+  double height_m = 4;
 }

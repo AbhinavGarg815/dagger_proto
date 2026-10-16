@@ -1,0 +1,7 @@
+# The base stands on the "Yard base" mark: send corrections from its coordinates.
+rover_id: "dagger-1"
+sent_at_ms: 1792100200000
+command {
+  command_id: "b45e0c1d-2b3c-4d5e-8f60-718293a4b5c9"
+  use_base_site { name: "Yard base" }
+}
