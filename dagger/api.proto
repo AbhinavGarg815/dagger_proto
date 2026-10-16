@@ -138,6 +138,7 @@ enum Capability {
   CAPABILITY_COME_HOME = 8;      // drives back to where the session's first job started (ComeHome)
   CAPABILITY_FOLLOW = 9;         // video + targets on /video; SelectTarget, StartFollow, StopFollow
   CAPABILITY_MAPS = 10;          // the saved SLAM maps: MapList, pictures over HTTP; ShowMap, DeleteMap
+  CAPABILITY_MAKE_MAP = 11;      // makes maps while the operator drives: StartMapping, SaveMap, DiscardMapping
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -222,6 +223,10 @@ message RoverState {
   // The person or marker picked to follow, and how the rover sees it. Absent
   // when nothing is picked.
   FollowStatus follow = 14;
+
+  // While making a map (MAPPING, and kept after a STOP until saved or
+  // discarded): the map so far. Absent otherwise.
+  MappingProgress mapping = 15;
 }
 
 message FollowStatus {
@@ -290,6 +295,7 @@ enum OperatingState {
   OPERATING_STATE_FAULT = 8;
   OPERATING_STATE_RECORDING = 9;      // the operator drives; the rover takes notes
   OPERATING_STATE_COMING_HOME = 10;   // driving back home along its own trail
+  OPERATING_STATE_MAPPING = 11;       // the operator drives; the rover makes a map
 }
 
 // How far the app may trust a position or heading. Deliberately in terms of
@@ -370,6 +376,7 @@ enum Job {
   JOB_FOLLOW = 3;
   JOB_COME_HOME = 4;
   JOB_RECORD_ROUTE = 5;
+  JOB_MAKE_MAP = 6;              // needs the obstacle sensor, not GPS (indoors too)
 }
 
 // ---------------------------------------------------------------------------
@@ -517,6 +524,9 @@ message Command {
     DeleteRoute delete_route = 24;
     ShowMap show_map = 25;
     DeleteMap delete_map = 26;
+    StartMapping start_mapping = 27;
+    SaveMap save_map = 28;
+    DiscardMapping discard_mapping = 29;
   }
 }
 
@@ -594,6 +604,20 @@ message ShowMap { string name = 1; }
 // Rejected UNKNOWN_MAP; NOT_IN_THIS_STATE while the rover drives on it
 // (Step D). If it was shown, nothing is shown after.
 message DeleteMap { string name = 1; }
+
+// Start making a map: the rover maps with its laser scanner while the operator
+// drives with the sticks. Moves nothing by itself. Accepted when no job runs
+// and no check blocking JOB_MAKE_MAP fails; the state becomes MAPPING.
+message StartMapping {}
+// Keep the map made so far under `name` (empty: MappingProgress.suggested_name).
+// Answered at once; saving takes a few seconds (MappingProgress.saving), then
+// the map is in MapList and the state leaves MAPPING. Tied to the Earth when
+// GPS was good during the drive. Rejected NOT_IN_THIS_STATE when not mapping,
+// NAME_TAKEN, TOO_SHORT when nothing was mapped yet.
+message SaveMap { string name = 1; }
+// Throw the map being made away; the state leaves MAPPING. Rejected
+// NOT_IN_THIS_STATE when not mapping.
+message DiscardMapping {}
 
 message CommandResult {
   string command_id = 1;
@@ -724,4 +748,15 @@ message MapSummary {
   uint32 picture_height_px = 9;
   // Rover's wall clock (UTC ms) when it was saved.
   uint64 created_at_ms = 10;
+}
+
+message MappingProgress {
+  // The map so far, as a saved one is described (name empty): its size, its
+  // picture (refreshed every few seconds; picture_path changes each time) and,
+  // once GPS has tied it to the Earth, its corners.
+  MapSummary map = 1;
+  // A name ready for the save box, e.g. "Map 3".
+  string suggested_name = 2;
+  // Save was asked: the files are being written.
+  bool saving = 3;
 }

@@ -1,0 +1,7 @@
+# Keep the map made so far as "Workshop".
+rover_id: "dagger-1"
+sent_at_ms: 1792080200000
+command {
+  command_id: "5a7e0c1d-2b3c-4d5e-8f60-718293a4b5c7"
+  save_map { name: "Workshop" }
+}

@@ -1,0 +1,24 @@
+# Making a map: the map so far is 24 x 18 m and already tied to the Earth.
+rover_id: "dagger-1"
+sent_at_ms: 1792080000000
+state {
+  seq: 4200
+  operating_state: OPERATING_STATE_MAPPING
+  armed: true
+  mapping {
+    map {
+      width_m: 24
+      height_m: 18
+      placed: true
+      corners { latitude_deg: 28.5450810  longitude_deg: 77.1924800 }
+      corners { latitude_deg: 28.5450810  longitude_deg: 77.1927240 }
+      corners { latitude_deg: 28.5449190  longitude_deg: 77.1927240 }
+      corners { latitude_deg: 28.5449190  longitude_deg: 77.1924800 }
+      placed_error_m: 1.4
+      picture_path: "/maps/~live.png?v=17"
+      picture_width_px: 480
+      picture_height_px: 360
+    }
+    suggested_name: "Map 3"
+  }
+}

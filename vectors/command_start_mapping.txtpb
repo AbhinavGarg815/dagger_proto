@@ -1,0 +1,7 @@
+# Start making a map.
+rover_id: "dagger-1"
+sent_at_ms: 1792080100000
+command {
+  command_id: "3a9e0c1d-2b3c-4d5e-8f60-718293a4b5c6"
+  start_mapping { }
+}
