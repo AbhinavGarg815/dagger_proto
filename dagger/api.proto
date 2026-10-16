@@ -227,6 +227,10 @@ message RoverState {
   // While making a map (MAPPING, and kept after a STOP until saved or
   // discarded): the map so far. Absent otherwise.
   MappingProgress mapping = 15;
+
+  // Where the rover is on a saved map (Step D1): set while it is finding itself
+  // on the map shown under missions. Absent when no map is in use.
+  MapPosition map_position = 16;
 }
 
 message FollowStatus {
@@ -561,6 +565,11 @@ message DiscardRecording {}
 message SaveRoute {
   string name = 1;
   repeated Waypoint waypoints = 2;
+  // A map mission (Step D1): the saved map (MapSummary.name, placed) the
+  // waypoints belong to. They are kept as points ON that map and driven with
+  // the rover finding itself on it -- the GPS error does not move them. Empty: a
+  // GPS mission, as before. Rejected UNKNOWN_MAP when there is no such placed map.
+  string map_name = 3;
 }
 
 // Keep the mission last sent to the autopilot (planned in QGroundControl or
@@ -665,6 +674,9 @@ enum RejectReason {
   REJECT_REASON_NO_TARGET = 13;
   // ShowMap / DeleteMap: no saved map has that name.
   REJECT_REASON_UNKNOWN_MAP = 14;
+  // StartRoute of a map mission: its map is not the one shown under missions,
+  // or the rover has not found itself on it yet (MapPosition.located).
+  REJECT_REASON_NOT_ON_MAP = 15;
 }
 
 // ---------------------------------------------------------------------------
@@ -685,6 +697,8 @@ message RouteSummary {
   repeated Waypoint waypoints = 4;
   // Rover's wall clock (UTC ms) when it was saved.
   uint64 created_at_ms = 5;
+  // A map mission: the map it belongs to (SaveRoute.map_name). Empty: GPS.
+  string map_name = 6;
 }
 
 // WGS84. A point on a SLAM map (map id + x, y) is added with Phase 6; indoors
@@ -759,4 +773,12 @@ message MappingProgress {
   string suggested_name = 2;
   // Save was asked: the files are being written.
   bool saving = 3;
+}
+
+message MapPosition {
+  // The map the rover is finding itself on: the one shown under missions.
+  string map_name = 1;
+  // It has found itself on it (its laser scan fits the map's walls). Map
+  // missions on this map may start.
+  bool located = 2;
 }

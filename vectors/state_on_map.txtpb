@@ -1,0 +1,12 @@
+# Ready, found on the map "Yard" (shown under missions): its missions may start.
+rover_id: "dagger-1"
+sent_at_ms: 1792090000000
+state {
+  seq: 5100
+  operating_state: OPERATING_STATE_READY
+  armed: true
+  map_position {
+    map_name: "Yard"
+    located: true
+  }
+}

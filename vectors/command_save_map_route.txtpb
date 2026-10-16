@@ -1,0 +1,12 @@
+# Save a mission planned on the map "Yard": its points are kept on that map.
+rover_id: "dagger-1"
+sent_at_ms: 1792090100000
+command {
+  command_id: "7b1e0c1d-2b3c-4d5e-8f60-718293a4b5c8"
+  save_route {
+    name: "Shed run"
+    waypoints { latitude_deg: 26.7479100  longitude_deg: 75.8552300 }
+    waypoints { latitude_deg: 26.7480200  longitude_deg: 75.8553900 }
+    map_name: "Yard"
+  }
+}
