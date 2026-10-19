@@ -1,0 +1,10 @@
+# GPS lost during a mission (Step D3): the route paused, the rover asks what to do.
+rover_id: "dagger-1"
+sent_at_ms: 1792400000000
+state {
+  operating_state: OPERATING_STATE_PAUSED
+  armed: true
+  position { latitude_deg: 26.7480500  longitude_deg: 75.8553700  horizontal_accuracy_m: 8.5  quality: QUALITY_POOR  rtk: RTK_STATUS_NONE }
+  route { route_id: "r-0003"  target_index: 4  waypoint_count: 9  fraction_done: 0.35  distance_remaining_m: 41.0 }
+  active_alerts { id: 21  code: ALERT_GPS_LOST  severity: SEVERITY_ACTION  raised_at_ms: 1792399998000 }
+}

@@ -439,6 +439,19 @@ enum AlertCode {
   ALERT_SERVICE_RESTARTING = 11;     // a rover service died and is coming back
   ALERT_STOPPED_BY_OPERATOR = 12;    // after STOP, until the next job
   ALERT_PAUSED_APP_SILENT = 13;      // route paused: app was silent; values: seconds
+  // Step D3 (GPS loss during a job). GPS is lost when, for a few seconds (rover
+  // settings), there is no 3-D fix, or the accuracy is worse than the limit, or the
+  // GNSS heading is gone.
+  ALERT_GPS_LOST = 14;               // ACTION: a GPS mission or the way home paused; the
+                                     // app offers Come home (ComeHome), Carry on
+                                     // (ResumeRoute: on LiDAR), Stop here (CancelRoute).
+                                     // values: lidar_m, metres already driven on LiDAR
+                                     // when it asks again at the limit
+  ALERT_NO_GPS_ON_LIDAR = 15;        // WARNING: carrying on with no GPS, on LiDAR alone;
+                                     // values: metres_left before it pauses to ask again
+  ALERT_NO_GPS_ON_MAP = 16;          // WARNING: no GPS; a map mission goes on, on the map
+  ALERT_RTK_LOST = 17;               // WARNING: the base is sending, but the rover is
+                                     // not RTK float/fixed: positions are metres, not cm
 }
 
 message Event {
@@ -477,6 +490,7 @@ enum StateReason {
   STATE_REASON_RC_OVERRIDE = 6;      // the sticks took over
   STATE_REASON_READINESS = 7;        // a readiness check changed
   STATE_REASON_HOME_REACHED = 8;     // Come home arrived
+  STATE_REASON_GPS_LOST = 9;         // paused: GPS lost (Step D3); ALERT_GPS_LOST asks
 }
 
 // ---------------------------------------------------------------------------
