@@ -330,6 +330,9 @@ message Position {
   Quality quality = 4;
   // RTK: corrections from the base station in use. Set by rovers that know.
   RtkStatus rtk = 5;
+  // Worked out by the rover from its own odometry since the last good GPS fix (GPS
+  // lost, Step D3), not measured: draw it as approximate. quality is then POOR.
+  bool from_odometry = 6;
 }
 
 message Heading {
@@ -452,6 +455,9 @@ enum AlertCode {
   ALERT_NO_GPS_ON_MAP = 16;          // WARNING: no GPS; a map mission goes on, on the map
   ALERT_RTK_LOST = 17;               // WARNING: the base is sending, but the rover is
                                      // not RTK float/fixed: positions are metres, not cm
+  ALERT_POSITION_DISAGREES = 18;     // WARNING: the autopilot's heading or position does
+                                     // not match GPS for a few seconds (e.g. its indoor
+                                     // source selected outdoors); values: degrees, metres
 }
 
 message Event {
