@@ -1,0 +1,29 @@
+# Indoors (Step D2): no GPS, so no position; found on the map "Workshop" (not placed)
+# after "I am here". The pose is on the map's picture. Position and Direction fail
+# but block only GPS missions; the autopilot is on its indoor source.
+rover_id: "dagger-1"
+sent_at_ms: 1792500000000
+state {
+  seq: 6100
+  operating_state: OPERATING_STATE_READY
+  armed: true
+  readiness {
+    id: CHECK_POSITION
+    status: CHECK_STATUS_FAIL
+    blocks: [JOB_RUN_ROUTE, JOB_COME_HOME, JOB_RECORD_ROUTE]
+  }
+  readiness {
+    id: CHECK_DRIVE_SOURCE
+    status: CHECK_STATUS_PASS
+    blocks: [JOB_RUN_MAP_MISSION]
+  }
+  map_position {
+    map_name: "Workshop"
+    located: true
+    has_pose: true
+    x_m: 4.25
+    y_m: 7.5
+    heading_deg: 90
+    finding: MAP_FINDING_FOUND
+  }
+}

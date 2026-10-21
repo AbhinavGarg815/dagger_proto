@@ -1,0 +1,15 @@
+# "I am here" (Step D2): the operator tapped where the rover stands on "Workshop",
+# then (asked: it fitted several ways round) a point in front of it.
+rover_id: "dagger-1"
+sent_at_ms: 1792500100000
+command {
+  command_id: "9c2e0c1d-2b3c-4d5e-8f60-718293a4b5d9"
+  set_here_on_map {
+    map_name: "Workshop"
+    x_m: 4.2
+    y_m: 7.4
+    has_front: true
+    front_x_m: 6.2
+    front_y_m: 7.4
+  }
+}

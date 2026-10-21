@@ -145,6 +145,8 @@ enum Capability {
   CAPABILITY_MAPS = 10;          // the saved SLAM maps: MapList, pictures over HTTP; ShowMap, DeleteMap
   CAPABILITY_MAKE_MAP = 11;      // makes maps while the operator drives: StartMapping, SaveMap, DiscardMapping
   CAPABILITY_BASE_STATION = 12;  // the RTK base: RoverState.base, BaseSites; SurveyBase, UseBaseSite, SaveBaseSite, DeleteBaseSite
+  CAPABILITY_FIND_ON_MAP = 13;   // Step D2: "I am here" (SetHereOnMap), MapPosition's pose and finding, maps
+                                 // that are not placed in use (shown, missions on them), JOB_RUN_MAP_MISSION
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -373,10 +375,15 @@ enum CheckId {
   CHECK_POSITION = 3;           // GNSS position good and the estimator steady
   CHECK_HEADING = 4;            // GNSS heading valid
   CHECK_OBSTACLE_SENSOR = 5;    // LiDAR running at rate
-  CHECK_LOCALISATION = 6;       // the rover knows where it is on the map
+  CHECK_LOCALISATION = 6;       // the rover knows where it is on the map (Step D2: the GPS map,
+                                // or found on the shown saved map)
   CHECK_NAVIGATION = 7;         // route driving (Nav2) up
   CHECK_BATTERY = 8;            // values: percent
   CHECK_CAMERA = 9;             // needed for following only
+  // Step D2: the autopilot has a position it can drive on -- GPS, or with no GPS its
+  // indoor (LiDAR) source -- and its estimator is steady. values: needs_switch (1: the
+  // rover does not change the source itself; the INDOOR switch must be set by hand).
+  CHECK_DRIVE_SOURCE = 10;
 }
 
 enum CheckStatus {
@@ -396,6 +403,10 @@ enum Job {
   JOB_COME_HOME = 4;
   JOB_RECORD_ROUTE = 5;
   JOB_MAKE_MAP = 6;              // needs the obstacle sensor, not GPS (indoors too)
+  // A mission on a saved map (RouteSummary.map_name), Step D2: needs the rover found on
+  // the map (MapPosition) and CHECK_DRIVE_SOURCE, not GPS. JOB_RUN_ROUTE is then a GPS
+  // mission. Rovers without CAPABILITY_FIND_ON_MAP block map missions as JOB_RUN_ROUTE.
+  JOB_RUN_MAP_MISSION = 7;
 }
 
 // ---------------------------------------------------------------------------
@@ -567,6 +578,7 @@ message Command {
     UseBaseSite use_base_site = 31;
     SaveBaseSite save_base_site = 32;
     DeleteBaseSite delete_base_site = 33;
+    SetHereOnMap set_here_on_map = 34;
   }
 }
 
@@ -605,6 +617,8 @@ message SaveRoute {
   // waypoints belong to. They are kept as points ON that map and driven with
   // the rover finding itself on it -- the GPS error does not move them. Empty: a
   // GPS mission, as before. Rejected UNKNOWN_MAP when there is no such placed map.
+  // Step D2 (CAPABILITY_FIND_ON_MAP): a map that is not placed too; its waypoints
+  // then carry map_x_m / map_y_m (UNKNOWN_MAP when there is no such map at all).
   string map_name = 3;
 }
 
@@ -683,6 +697,22 @@ message SaveBaseSite { string name = 1; }
 // Forget a saved site. Rejected UNKNOWN_SITE. The base keeps going as it is.
 message DeleteBaseSite { string name = 1; }
 
+// "I am here" (Step D2): the operator taps where the rover stands on the shown map's
+// picture (x_m, y_m as MapPosition). The rover searches around that spot, every way
+// round, for where its laser scan fits the walls; MapPosition.finding says how it went.
+// With has_front (asked for by MAP_FINDING_NEED_FRONT): a second tap, in front of the
+// rover, and only directions towards it are tried. Moves nothing. Rejected UNKNOWN_MAP
+// when there is no such map, NOT_ON_MAP when it is not the shown map, NOT_IN_THIS_STATE
+// while a job drives (a mission running, following, coming home).
+message SetHereOnMap {
+  string map_name = 1;
+  double x_m = 2;
+  double y_m = 3;
+  bool has_front = 4;
+  double front_x_m = 5;
+  double front_y_m = 6;
+}
+
 message CommandResult {
   string command_id = 1;
   CommandOutcome outcome = 2;
@@ -760,11 +790,15 @@ message RouteSummary {
   string map_name = 6;
 }
 
-// WGS84. A point on a SLAM map (map id + x, y) is added with Phase 6; indoors
-// the rover already reports lat/lon from its georeferenced map.
+// WGS84. On a map that is not placed (Step D2) the point on the map instead.
 message Waypoint {
   double latitude_deg = 1;
   double longitude_deg = 2;
+  // On a map that is not placed (SaveRoute.map_name / RouteSummary.map_name name it):
+  // the point on the map's picture, metres as MapPosition. latitude/longitude are then
+  // 0 and mean nothing.
+  double map_x_m = 3;
+  double map_y_m = 4;
 }
 
 message RouteProgress {
@@ -840,6 +874,29 @@ message MapPosition {
   // It has found itself on it (its laser scan fits the map's walls). Map
   // missions on this map may start.
   bool located = 2;
+  // Step D2. Where the rover is ON THE MAP'S PICTURE, once found (has_pose): metres
+  // from the picture's bottom-left corner, x to the right along its bottom edge, y up
+  // its left edge (the picture as stored: MapSummary.width_m x height_m). For a map
+  // that is not placed this is the only position there is.
+  bool has_pose = 3;
+  double x_m = 4;
+  double y_m = 5;
+  // Which way the rover faces on the picture, degrees clockwise from the picture's up.
+  float heading_deg = 6;
+  // How finding itself is going. UNSPECIFIED from rovers before D2: `located` alone.
+  MapFinding finding = 7;
+}
+
+enum MapFinding {
+  MAP_FINDING_UNSPECIFIED = 0;
+  MAP_FINDING_SEARCHING = 1;       // looking: from GPS on a placed map, or around the operator's tap
+  MAP_FINDING_NEED_HERE = 2;       // it cannot look by itself (no GPS, no clear match from GPS, or it
+                                   // lost its place): asks for "I am here" (SetHereOnMap)
+  MAP_FINDING_NOT_FOUND_HERE = 3;  // the scan fits nowhere near the tap: tap again, or drive to where
+                                   // more walls are in view
+  MAP_FINDING_NEED_FRONT = 4;      // it fits several ways round at the tap: asks for SetHereOnMap again
+                                   // with a tap in front of the rover (has_front)
+  MAP_FINDING_FOUND = 5;           // found (located)
 }
 
 // ---------------------------------------------------------------------------

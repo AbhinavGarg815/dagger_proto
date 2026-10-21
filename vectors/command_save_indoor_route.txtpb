@@ -1,0 +1,13 @@
+# Save a mission planned on "Workshop", a map that is not placed (Step D2): its points
+# are on the map's picture, in metres; latitude/longitude are left at 0.
+rover_id: "dagger-1"
+sent_at_ms: 1792500200000
+command {
+  command_id: "1d4e0c1d-2b3c-4d5e-8f60-718293a4b5da"
+  save_route {
+    name: "Bench run"
+    waypoints { map_x_m: 4.25  map_y_m: 7.5 }
+    waypoints { map_x_m: 15.5  map_y_m: 3.75 }
+    map_name: "Workshop"
+  }
+}
