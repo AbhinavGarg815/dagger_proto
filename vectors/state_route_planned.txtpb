@@ -1,0 +1,23 @@
+# Running a GPS mission: point 2 of 4, the rover's plan bending round something in the way
+# on its way to point 2, then on to point 3 (the end of what it drives now); point 4 is not
+# planned yet.
+rover_id: "dagger-1"
+sent_at_ms: 1792748000000
+state {
+  seq: 7300
+  operating_state: OPERATING_STATE_RUNNING_ROUTE
+  speed_mps: 0.5
+  armed: true
+  route {
+    route_id: "r-0005"
+    target_index: 2
+    waypoint_count: 4
+    fraction_done: 0.375
+    distance_remaining_m: 25.0
+    planned_path { latitude_deg: 28.5000450  longitude_deg: 77.2 }
+    planned_path { latitude_deg: 28.5000720  longitude_deg: 77.2000250 }
+    planned_path { latitude_deg: 28.5000900  longitude_deg: 77.2 }
+    planned_path { latitude_deg: 28.5000900  longitude_deg: 77.2001000 }
+    planned_through_index: 3
+  }
+}

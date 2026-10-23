@@ -854,6 +854,16 @@ message RouteProgress {
   // at most 200, in driving order. Empty for a saved route (the app has it).
   // On a map that is not placed: map_x_m/map_y_m (latitude/longitude 0).
   repeated Waypoint waypoints = 6;
+  // The rover's plan for what it drives now: from where it is, through the points it
+  // was sent, to point planned_through_index -- round what its LiDAR sees, straight
+  // where the way is clear; GPS and map missions alike. Re-planned about once a second;
+  // only its corners, at most 200 points. Latitude/longitude, or map_x_m/map_y_m on a
+  // map that is not placed. Empty: no plan now (paused, between drives, or an older
+  // rover) -- draw the points joined by straight lines.
+  repeated Waypoint planned_path = 7;
+  // 1-based: the last route point planned_path reaches. The legs after it are not
+  // planned yet. 0 with no plan.
+  uint32 planned_through_index = 8;
 }
 
 message RecordingProgress {
