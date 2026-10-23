@@ -1,0 +1,31 @@
+# Indoors (no GPS): home is a spot on "Workshop" (not placed), and the rover is on its way
+# home on that map: the way home's points are metres on the map's picture.
+rover_id: "dagger-1"
+sent_at_ms: 1792520000000
+state {
+  seq: 7100
+  operating_state: OPERATING_STATE_COMING_HOME
+  armed: true
+  route {
+    target_index: 1
+    waypoint_count: 2
+    fraction_done: 0.25
+    distance_remaining_m: 6.5
+    waypoints { map_x_m: 6.0  map_y_m: 8.0 }
+    waypoints { map_x_m: 4.0  map_y_m: 6.0 }
+  }
+  map_position {
+    map_name: "Workshop"
+    located: true
+    has_pose: true
+    x_m: 9.5
+    y_m: 8.0
+    heading_deg: 270
+    finding: MAP_FINDING_FOUND
+  }
+  home_on_map {
+    map_name: "Workshop"
+    x_m: 4.0
+    y_m: 6.0
+  }
+}

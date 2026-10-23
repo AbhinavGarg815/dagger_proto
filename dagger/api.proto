@@ -148,6 +148,8 @@ enum Capability {
   CAPABILITY_FIND_ON_MAP = 13;   // Step D2: "I am here" (SetHereOnMap), MapPosition's pose and finding, maps
                                  // that are not placed in use (shown, missions on them), JOB_RUN_MAP_MISSION
   CAPABILITY_SET_HOME = 14;      // the operator moves home (SetHome); home is kept across restarts
+  CAPABILITY_HOME_ON_MAP = 15;   // home on a saved map (indoors, no GPS): RoverState.home_on_map, SetHome on_map;
+                                 // Return to Home driven on the map in use when the rover is found on it
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -245,6 +247,18 @@ message RoverState {
   // The RTK base station, as the rover hears it over its radio. Absent when
   // the rover has no base support.
   BaseStation base = 17;
+
+  // Home on a saved map (CAPABILITY_HOME_ON_MAP): set indoors with no GPS, on the map the
+  // rover was found on. Absent when home is a place on the Earth only (`home`). When that
+  // map is placed, `home` carries the same spot as lat/lon too.
+  HomeOnMap home_on_map = 18;
+}
+
+message HomeOnMap {
+  string map_name = 1;
+  // On the map's picture, metres as MapPosition (from its bottom-left corner, x right, y up).
+  double x_m = 2;
+  double y_m = 3;
 }
 
 message FollowStatus {
@@ -636,6 +650,10 @@ message ImportMission { string name = 1; }
 
 // Drive back home (RoverState.home) along the rover's own trail, thinned, with
 // Nav2 going around anything new; trail points that are blocked are skipped.
+// CAPABILITY_HOME_ON_MAP: when the rover is found on the map in use and home is on it
+// (home_on_map, or a GPS home on a placed map), driven on that map like a map mission;
+// RouteProgress.waypoints then carry map_x_m/map_y_m on a map that is not placed. Rejected
+// NOT_ON_MAP when home is on a map the rover is not found on.
 // Accepted when READY, armed, no check blocking JOB_COME_HOME fails, and a
 // home is known (else NO_HOME). Pause / Resume / Cancel act on it as on a
 // route; RoverState.route describes it, with route_id empty and the points.
@@ -722,9 +740,18 @@ message SetHereOnMap {
 // goes back along the rover's trail as far as it leads, then plans the rest. Rejected
 // NOT_IN_THIS_STATE while a job drives (a mission running or paused, coming home),
 // NOT_READY when `here` and the rover has no GPS fix.
+// CAPABILITY_HOME_ON_MAP: `here` with no GPS is where the rover is on the map in use
+// (found on it); `on_map`: a spot tapped on the shown map's picture (map_x_m, map_y_m,
+// metres as MapPosition) -- for a map that is not placed. Rejected NOT_READY when `here`
+// and the rover has neither GPS nor its place on a map, NOT_ON_MAP when `on_map` names a
+// map that is not the shown one.
 message SetHome {
   bool here = 1;
   Waypoint at = 2;
+  bool on_map = 3;
+  string map_name = 4;
+  double map_x_m = 5;
+  double map_y_m = 6;
 }
 
 message CommandResult {
@@ -825,6 +852,7 @@ message RouteProgress {
   double distance_remaining_m = 5;
   // The points being driven when they are not a saved route — the way home —
   // at most 200, in driving order. Empty for a saved route (the app has it).
+  // On a map that is not placed: map_x_m/map_y_m (latitude/longitude 0).
   repeated Waypoint waypoints = 6;
 }
 
