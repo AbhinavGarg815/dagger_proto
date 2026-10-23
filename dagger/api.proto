@@ -147,6 +147,7 @@ enum Capability {
   CAPABILITY_BASE_STATION = 12;  // the RTK base: RoverState.base, BaseSites; SurveyBase, UseBaseSite, SaveBaseSite, DeleteBaseSite
   CAPABILITY_FIND_ON_MAP = 13;   // Step D2: "I am here" (SetHereOnMap), MapPosition's pose and finding, maps
                                  // that are not placed in use (shown, missions on them), JOB_RUN_MAP_MISSION
+  CAPABILITY_SET_HOME = 14;      // the operator moves home (SetHome); home is kept across restarts
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -226,6 +227,7 @@ message RoverState {
 
   // Where Come home goes: the rover's position when the first job since the
   // gateway started began. Absent until then. The app draws it on the map.
+  // With CAPABILITY_SET_HOME: or where the operator put it (SetHome), kept across restarts.
   Position home = 13;
 
   // The person or marker picked to follow, and how the rover sees it. Absent
@@ -579,6 +581,7 @@ message Command {
     SaveBaseSite save_base_site = 32;
     DeleteBaseSite delete_base_site = 33;
     SetHereOnMap set_here_on_map = 34;
+    SetHome set_home = 35;
   }
 }
 
@@ -711,6 +714,17 @@ message SetHereOnMap {
   bool has_front = 4;
   double front_x_m = 5;
   double front_y_m = 6;
+}
+
+// Move home (RoverState.home), where Return to Home goes. Moves nothing. Kept by the rover
+// across restarts. `here`: where the rover stands now (a GPS fix; its trail home starts
+// again from here). Else `at`: a place on the Earth the operator tapped -- the way home
+// goes back along the rover's trail as far as it leads, then plans the rest. Rejected
+// NOT_IN_THIS_STATE while a job drives (a mission running or paused, coming home),
+// NOT_READY when `here` and the rover has no GPS fix.
+message SetHome {
+  bool here = 1;
+  Waypoint at = 2;
 }
 
 message CommandResult {

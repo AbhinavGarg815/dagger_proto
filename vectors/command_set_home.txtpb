@@ -1,0 +1,9 @@
+# Move home to a place the operator tapped on the map (SetHome). Moves nothing.
+rover_id: "dagger-1"
+sent_at_ms: 1792510000000
+command {
+  command_id: "2e5f0c1d-2b3c-4d5e-8f60-718293a4b5db"
+  set_home {
+    at { latitude_deg: 26.7479600  longitude_deg: 75.8552800 }
+  }
+}
