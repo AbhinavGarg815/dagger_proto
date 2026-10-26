@@ -97,6 +97,11 @@ message Envelope {
     // known coordinates). Sent right after HelloReply and whenever the list
     // changes. Complete every time.
     BaseSites base_sites = 22;
+
+    // Rover -> app: what is round the rover now (CAPABILITY_OBSTACLES), about once a
+    // second while its position is known. Complete every time; the app drops it when
+    // no newer one has come for a few seconds.
+    Obstacles obstacles = 23;
   }
 }
 
@@ -150,6 +155,7 @@ enum Capability {
   CAPABILITY_SET_HOME = 14;      // the operator moves home (SetHome); home is kept across restarts
   CAPABILITY_HOME_ON_MAP = 15;   // home on a saved map (indoors, no GPS): RoverState.home_on_map, SetHome on_map;
                                  // Return to Home driven on the map in use when the rover is found on it
+  CAPABILITY_OBSTACLES = 16;     // live obstacles round the rover: Envelope.obstacles, about once a second
   // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
 }
 
@@ -993,6 +999,19 @@ message BaseStation {
   bool survey_done = 7;
   // A name ready for the save box, e.g. "Site 3".
   string suggested_site_name = 8;
+}
+
+// What the rover plans round now, within about 10 m (its live obstacle map, from the
+// LiDAR) -- the things that bend its planned path. A grid of square cells, cell_m wide;
+// only the cells with something in them are listed.
+message Obstacles {
+  // The centre of cell (0, 0): latitude/longitude, or map_x_m/map_y_m on the map in
+  // use when that map is not placed (indoors) -- the same place the rover is drawn.
+  Waypoint anchor = 1;
+  float cell_m = 2;
+  // The cells, as (i, j) pairs one after the other: i cells east and j cells north of
+  // the anchor (latitude/longitude), or i along the picture's x and j along its y.
+  repeated sint32 cells = 3 [packed = true];
 }
 
 message BaseSites {

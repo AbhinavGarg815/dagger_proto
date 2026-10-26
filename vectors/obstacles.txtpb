@@ -1,0 +1,9 @@
+# What is round the rover now: three cells of a box 2 m ahead (north) of the anchor and one
+# 1 m to its west; 0.2 m cells.
+rover_id: "dagger-1"
+sent_at_ms: 1793001000000
+obstacles {
+  anchor { latitude_deg: 26.7479132  longitude_deg: 75.8553058 }
+  cell_m: 0.2
+  cells: [0, 10, 1, 10, -1, 10, -5, 0]
+}
