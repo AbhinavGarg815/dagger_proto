@@ -1,0 +1,10 @@
+# Told to drive for 5 s, the rover did not move: the mission paused, the alert says why
+# (cause 1: on hold -- carry on puts it back).
+rover_id: "dagger-1"
+sent_at_ms: 1793000000000
+state {
+  operating_state: OPERATING_STATE_PAUSED
+  armed: true
+  route { route_id: "r-12a349e4"  target_index: 1  waypoint_count: 3  fraction_done: 0.0  distance_remaining_m: 30.5 }
+  active_alerts { id: 31  code: ALERT_NOT_MOVING  severity: SEVERITY_ACTION  raised_at_ms: 1792999999000  values { key: "cause"  value: 1 } }
+}

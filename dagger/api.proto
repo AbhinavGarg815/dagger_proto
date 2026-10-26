@@ -485,6 +485,13 @@ enum AlertCode {
   ALERT_POSITION_DISAGREES = 18;     // WARNING: the autopilot's heading or position does
                                      // not match GPS for a few seconds (e.g. its indoor
                                      // source selected outdoors); values: degrees, metres
+  ALERT_NOT_MOVING = 19;             // ACTION: a mission or the way home paused: the rover
+                                     // was told to drive for a few seconds (rover settings)
+                                     // and did not move. values: cause -- 1 on hold (the
+                                     // autopilot not taking drive commands; carry on puts
+                                     // it back), 2 its drive commands held back (the STOP
+                                     // lock; carry on releases it), 0 not known (check it).
+                                     // Not armed is ALERT_ARM_WITH_SWITCH instead.
 }
 
 message Event {
@@ -524,6 +531,8 @@ enum StateReason {
   STATE_REASON_READINESS = 7;        // a readiness check changed
   STATE_REASON_HOME_REACHED = 8;     // Come home arrived
   STATE_REASON_GPS_LOST = 9;         // paused: GPS lost (Step D3); ALERT_GPS_LOST asks
+  STATE_REASON_NOT_MOVING = 10;      // paused: told to drive, did not move (ALERT_NOT_MOVING,
+                                     // or ALERT_ARM_WITH_SWITCH when not armed)
 }
 
 // ---------------------------------------------------------------------------
