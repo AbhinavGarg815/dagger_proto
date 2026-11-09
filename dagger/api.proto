@@ -640,8 +640,9 @@ message DiscardRecording {}
 
 // Keep a mission planned in the app: waypoints placed on the map, in driving
 // order. Moves nothing, so it is accepted in any state. An empty name means the
-// rover's suggested one. Rejected TOO_SHORT with fewer than two waypoints and
-// NAME_TAKEN when the name is used (overwriting needs the PIN, later).
+// rover's suggested one. Rejected TOO_SHORT with no waypoints (one is a mission:
+// owner, 2026-11-09; was fewer than two) and NAME_TAKEN when the name is used
+// (overwriting needs the PIN, later).
 message SaveRoute {
   string name = 1;
   repeated Waypoint waypoints = 2;
@@ -660,7 +661,7 @@ message SaveRoute {
 // in order; the home point and other items (speeds, loiters, return home) are
 // left out. Moves nothing, so it is accepted in any state. An empty name means
 // the rover's suggested one. Rejected NO_MISSION when the autopilot holds no
-// waypoints, TOO_SHORT with fewer than two, NAME_TAKEN as for SaveRoute.
+// waypoints (one is enough: owner, 2026-11-09), NAME_TAKEN as for SaveRoute.
 message ImportMission { string name = 1; }
 
 // Drive back home (RoverState.home) along the rover's own trail, thinned, with
