@@ -156,8 +156,8 @@ enum Capability {
   CAPABILITY_HOME_ON_MAP = 15;   // home on a saved map (indoors, no GPS): RoverState.home_on_map, SetHome on_map;
                                  // Return to Home driven on the map in use when the rover is found on it
   CAPABILITY_OBSTACLES = 16;     // live obstacles round the rover: Envelope.obstacles, about once a second
-  CAPABILITY_DRIVE_MAP = 17;     // the map of this drive (owner, 2026-11-17): the rover maps from its first move
-                                 // after switching on -- driven by hand or on a job -- until switched off. While no
+  CAPABILITY_DRIVE_MAP = 17;     // the map of this drive (owner, 2026-11-17): the rover maps from switching on, as
+                                 // it moves -- driven by hand or on a job -- until switched off. While no
                                  // saved map is shown and GPS is not good enough to drive on, it is the map in use:
                                  // in MapList (MapSummary.drive_map) and MapList.shown, the rover always found on it
                                  // (MapPosition FOUND), home and the way home on it (home_on_map), map missions,
