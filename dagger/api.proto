@@ -156,7 +156,17 @@ enum Capability {
   CAPABILITY_HOME_ON_MAP = 15;   // home on a saved map (indoors, no GPS): RoverState.home_on_map, SetHome on_map;
                                  // Return to Home driven on the map in use when the rover is found on it
   CAPABILITY_OBSTACLES = 16;     // live obstacles round the rover: Envelope.obstacles, about once a second
-  // Later: CAPABILITY_FOLLOW, CAPABILITY_GO_TO_PLACE, ...
+  CAPABILITY_DRIVE_MAP = 17;     // the map of this drive (owner, 2026-11-17): the rover maps from its first move
+                                 // after switching on -- driven by hand or on a job -- until switched off. While no
+                                 // saved map is shown and GPS is not good enough to drive on, it is the map in use:
+                                 // in MapList (MapSummary.drive_map) and MapList.shown, the rover always found on it
+                                 // (MapPosition FOUND), home and the way home on it (home_on_map), map missions,
+                                 // SetHome and GoToPlace on it. Its picture is redrawn every few seconds
+                                 // (picture_path changes, MapList sent again). Home is set at the first move when
+                                 // there is none (RoverState.home / home_on_map), and the trail kept from there.
+  CAPABILITY_GO_TO_PLACE = 18;   // drives to one place the operator picks (GoToPlace, JOB_GO_TO_PLACE): a place on
+                                 // the Earth with GPS, or a spot on the map in use (a saved map, or the map of this
+                                 // drive) through the space the rover has seen
 }
 
 // ---------------------------------------------------------------------------
@@ -539,6 +549,7 @@ enum StateReason {
   STATE_REASON_GPS_LOST = 9;         // paused: GPS lost (Step D3); ALERT_GPS_LOST asks
   STATE_REASON_NOT_MOVING = 10;      // paused: told to drive, did not move (ALERT_NOT_MOVING,
                                      // or ALERT_ARM_WITH_SWITCH when not armed)
+  STATE_REASON_PLACE_REACHED = 11;   // GoToPlace arrived
 }
 
 // ---------------------------------------------------------------------------
@@ -611,7 +622,27 @@ message Command {
     DeleteBaseSite delete_base_site = 33;
     SetHereOnMap set_here_on_map = 34;
     SetHome set_home = 35;
+    GoToPlace go_to_place = 36;
   }
+}
+
+// CAPABILITY_GO_TO_PLACE: drive to one place and stop there (JOB_GO_TO_PLACE). `at`: a place on
+// the Earth (needs GPS good enough to drive on). Else `on_map`: a spot tapped on the shown map's
+// picture (map_x_m, map_y_m, metres as MapPosition) -- a saved map the rover is found on, or the
+// map of this drive. On a map the rover plans its way through the space it has seen. Runs as a
+// route (RUNNING_ROUTE, RouteProgress.job = JOB_GO_TO_PLACE, the point in RouteProgress.waypoints;
+// PauseRoute / ResumeRoute / CancelRoute and the pause rules as for a mission); on arrival READY with
+// STATE_REASON_PLACE_REACHED. Accepted when READY or STOPPED, armed, and no check blocking
+// JOB_GO_TO_PLACE fails. Rejected NOT_ON_MAP when `on_map` names a map that is not the shown one
+// or the rover is not found on it, NOT_SEEN when the spot is where the rover has not been (grey on
+// the picture, or off it), WAYPOINT_BLOCKED (blocked_waypoint 1) when it is on an obstacle with no
+// clear spot within 1 m, NOT_READY when `at` and GPS is not good enough.
+message GoToPlace {
+  Waypoint at = 1;
+  bool on_map = 2;
+  string map_name = 3;
+  double map_x_m = 4;
+  double map_y_m = 5;
 }
 
 // Bring the rover to a stop and hold. Never a substitute for the RC sticks,
@@ -823,6 +854,8 @@ enum RejectReason {
   REJECT_REASON_NO_BASE = 16;
   // UseBaseSite / DeleteBaseSite: no saved site has that name.
   REJECT_REASON_UNKNOWN_SITE = 17;
+  // GoToPlace on a map: the spot is where the rover has not been (not seen on the map).
+  REJECT_REASON_NOT_SEEN = 18;
 }
 
 // ---------------------------------------------------------------------------
@@ -880,6 +913,10 @@ message RouteProgress {
   // 1-based: the last route point planned_path reaches. The legs after it are not
   // planned yet. 0 with no plan.
   uint32 planned_through_index = 8;
+  // Which job drives these points: JOB_RUN_ROUTE / JOB_RUN_MAP_MISSION (a saved mission),
+  // JOB_COME_HOME (the way home), JOB_GO_TO_PLACE (one place). UNSPECIFIED from older rovers:
+  // then an empty route_id with waypoints is the way home.
+  Job job = 9;
 }
 
 message RecordingProgress {
@@ -923,6 +960,10 @@ message MapSummary {
   uint32 picture_height_px = 9;
   // Rover's wall clock (UTC ms) when it was saved.
   uint64 created_at_ms = 10;
+  // CAPABILITY_DRIVE_MAP: this is the map of this drive, not a saved map. Listed only while it
+  // is the map in use. Not shown or deleted by name (ShowMap / DeleteMap: UNKNOWN_MAP). Its name
+  // is the rover's; the app shows its own words for it.
+  bool drive_map = 11;
 }
 
 message MappingProgress {

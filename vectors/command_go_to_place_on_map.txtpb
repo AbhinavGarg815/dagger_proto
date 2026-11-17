@@ -1,0 +1,12 @@
+# Drive to a spot tapped on the map of this drive's picture (the map in use, not placed).
+rover_id: "dagger-1"
+sent_at_ms: 1793000000000
+command {
+  command_id: "5b7f0c1d-2b3c-4d5e-8f60-718293a4b5dd"
+  go_to_place {
+    on_map: true
+    map_name: "~drive"
+    map_x_m: 31.5
+    map_y_m: 44.25
+  }
+}

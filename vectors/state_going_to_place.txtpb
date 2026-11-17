@@ -1,0 +1,27 @@
+# Driving to one place on the map of this drive, which is the map in use.
+rover_id: "dagger-1"
+sent_at_ms: 1793000200000
+state {
+  operating_state: OPERATING_STATE_RUNNING_ROUTE
+  armed: true
+  route {
+    target_index: 1
+    waypoint_count: 1
+    fraction_done: 0.25
+    distance_remaining_m: 9.5
+    waypoints {
+      map_x_m: 31.5
+      map_y_m: 44.25
+    }
+    job: JOB_GO_TO_PLACE
+  }
+  map_position {
+    map_name: "~drive"
+    located: true
+    has_pose: true
+    x_m: 30.0
+    y_m: 35.0
+    heading_deg: 10.0
+    finding: MAP_FINDING_FOUND
+  }
+}

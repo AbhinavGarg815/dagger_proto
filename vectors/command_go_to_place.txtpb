@@ -1,0 +1,12 @@
+# Drive to a place on the Earth (GPS).
+rover_id: "dagger-1"
+sent_at_ms: 1793000100000
+command {
+  command_id: "6c8f0c1d-2b3c-4d5e-8f60-718293a4b5de"
+  go_to_place {
+    at {
+      latitude_deg: 26.74812
+      longitude_deg: 75.85541
+    }
+  }
+}
