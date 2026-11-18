@@ -741,6 +741,10 @@ message StartMapping {}
 // the map is in MapList and the state leaves MAPPING. Tied to the Earth when
 // GPS was good during the drive. Rejected NOT_IN_THIS_STATE when not mapping,
 // NAME_TAKEN, TOO_SHORT when nothing was mapped yet.
+// CAPABILITY_DRIVE_MAP, while no map is being made: keeps the map of this drive under `name`
+// (empty: a name the rover picks) as a saved map; it is in MapList a few seconds later and the
+// map of this drive goes on. Rejected NOT_IN_THIS_STATE when there is none, TOO_SHORT before it
+// has drawn anything, NAME_TAKEN.
 message SaveMap { string name = 1; }
 // Throw the map being made away; the state leaves MAPPING. Rejected
 // NOT_IN_THIS_STATE when not mapping.
@@ -960,9 +964,11 @@ message MapSummary {
   uint32 picture_height_px = 9;
   // Rover's wall clock (UTC ms) when it was saved.
   uint64 created_at_ms = 10;
-  // CAPABILITY_DRIVE_MAP: this is the map of this drive, not a saved map. Listed only while it
-  // is the map in use. Not shown or deleted by name (ShowMap / DeleteMap: UNKNOWN_MAP). Its name
-  // is the rover's; the app shows its own words for it.
+  // CAPABILITY_DRIVE_MAP: this is the map of this drive, not a saved map. Listed whenever the
+  // rover makes it (so it can be kept: SaveMap); MapList.shown names it only while it is the map in
+  // use. A new one (after odometry was lost or jumped) has the same name and a new frame. Not shown
+  // or deleted by name (ShowMap / DeleteMap: UNKNOWN_MAP). Its name is the rover's; the app shows
+  // its own words for it.
   bool drive_map = 11;
 }
 
